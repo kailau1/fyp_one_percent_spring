@@ -13,7 +13,9 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable()) // Disable CSRF for development purposes
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll() // Allow unrestricted access to API endpoints
+                        .requestMatchers("/api/**", "/actuator/**",
+                                 "/swagger-ui/**", "/api-docs/**")
+                            .permitAll() // Allow unrestricted access to API endpoints
                         .anyRequest().authenticated() // Require authentication for all other requests
                 )
                 .cors(cors -> {}); // Enable CORS configuration (defined separately)
