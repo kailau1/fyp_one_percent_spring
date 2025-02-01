@@ -19,4 +19,8 @@ public class Habit {
     private String habitName;
     private String description;
     private boolean completed;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime lastUpdated;
+
 }

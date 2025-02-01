@@ -7,42 +7,35 @@
   <artifactId>myproject</artifactId>
   <version>0.0.1-SNAPSHOT</version>
 
-  <!-- Use Spring Boot Parent -->
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.1.2</version> <!-- Ensure this matches your Spring Boot version -->
-    <relativePath/> <!-- Look for parent pom -->
+    <version>3.1.2</version>
+    <relativePath/>
   </parent>
 
-  <!-- Dependencies -->
   <dependencies>
-    <!-- Spring Boot Starter Data MongoDB -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-mongodb</artifactId>
     </dependency>
 
-    <!-- Lombok -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>1.18.30</version>
     </dependency>
 
-    <!-- Spring Boot Starter Web -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
-    <!-- Spring Boot Starter Security -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
 
-    <!-- https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui -->
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
@@ -58,7 +51,6 @@
       <artifactId>micrometer-registry-prometheus</artifactId>
     </dependency>
 
-    <!-- testing -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
@@ -73,7 +65,6 @@
 
   </dependencies>
 
-  <!-- Plugin Management -->
   <build>
     <plugins>
       <plugin>
