@@ -18,9 +18,14 @@ public class Habit {
     private String userId;
     private String habitName;
     private String description;
+    private String colour;
+
     private boolean completed;
 
     private LocalDateTime createdAt;
     private LocalDateTime lastUpdated;
 
+    private String habitType;
+    private String trigger;
+    private String action;
 }

@@ -18,8 +18,16 @@ public class HabitService {
     public Habit createHabit(Habit habit) {
         habit.setCreatedAt(LocalDateTime.now());
         habit.setLastUpdated(LocalDateTime.now());
+
+        if ("RECOMMENDED".equalsIgnoreCase(habit.getHabitType())) {
+            if (habit.getTrigger() == null || habit.getAction() == null) {
+                throw new IllegalArgumentException("Recommended habits must have both a trigger and an action.");
+            }
+        }
+
         return habitRepository.save(habit);
     }
+
 
     public List<Habit> getHabitsByUser(String userId) {
         return habitRepository.findByUserId(userId);
@@ -32,13 +40,17 @@ public class HabitService {
             habitToUpdate.setHabitName(habit.getHabitName());
             habitToUpdate.setDescription(habit.getDescription());
             habitToUpdate.setCompleted(habit.isCompleted());
+            habitToUpdate.setHabitType(habit.getHabitType());
+            habitToUpdate.setTrigger(habit.getTrigger());
+            habitToUpdate.setAction(habit.getAction());
             habitToUpdate.setLastUpdated(LocalDateTime.now());
+
             return habitRepository.save(habitToUpdate);
         }
         throw new IllegalArgumentException("Habit not found with ID: " + habit.getId());
     }
 
-    // Delete a habit by ID
+
     public void deleteHabit(String id) {
         if (habitRepository.existsById(id)) {
             habitRepository.deleteById(id);
@@ -47,7 +59,6 @@ public class HabitService {
         }
     }
 
-    // Mark a habit as completed
     public Habit completeHabit(String id) {
         Optional<Habit> habitOptional = habitRepository.findById(id);
         if (habitOptional.isPresent()) {
