@@ -36,4 +36,14 @@ public class JournalController {
     public void deleteJournal(@PathVariable String id) {
         journalService.deleteJournalEntry(id);
     }
+
+    @PostMapping("/response/{id}")
+    public void addResponse(@PathVariable String id, @RequestBody String response) {
+        journalService.addResponse(id, response);
+    }
+
+    @PutMapping("/entry")
+    public void updateJournal(@RequestBody JournalEntry entry) {
+        journalService.updateJournalEntry(entry);
+    }
 }
