@@ -40,7 +40,15 @@ public class JournalService {
         journalRepository.save(entry);
     }
 
-    public void updateJournalEntry(JournalEntry entry) {
-        journalRepository.save(entry);
+    public JournalEntry updateJournalEntry(JournalEntry entry) {
+        Optional<JournalEntry> existingJournal = journalRepository.findById(entry.getId());
+        if (existingJournal.isPresent()) {
+            JournalEntry journalToUpdate = existingJournal.get();
+            journalToUpdate.setTitle(entry.getTitle());
+            journalToUpdate.setContent(entry.getContent());
+
+            return journalRepository.save(journalToUpdate);
+        }
+        throw new IllegalArgumentException("Habit not found with ID: " + entry.getId());
     }
 }
