@@ -1,21 +1,14 @@
-package com.example.one_percent.model;
+package com.example.one_percent.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Setter;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.annotation.Id;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "habits")
-public class Habit {
-
-    @Id
+public class HabitDTO {
     private String id;
     private String userId;
     private String habitName;
