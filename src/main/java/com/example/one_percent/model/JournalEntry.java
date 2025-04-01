@@ -21,6 +21,7 @@ public class JournalEntry {
     private String llmResponse;
     private String userId;
     private LocalDateTime createdAt;
+
 }
 
 

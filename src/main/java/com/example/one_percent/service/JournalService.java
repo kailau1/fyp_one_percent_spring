@@ -22,7 +22,6 @@ public class JournalService {
 
     private final JournalRepository journalRepository;
     private final JournalEntryMapper journalMapper;
-    private final UserRepository userRepository;
 
     private User getAuthenticatedUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

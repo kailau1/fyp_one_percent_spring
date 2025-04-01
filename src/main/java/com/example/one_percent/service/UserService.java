@@ -56,12 +56,11 @@ public class UserService {
         String token = jwtUtil.generateToken(foundUser);
 
         AuthResponseDTO response = new AuthResponseDTO(
-                token,
-                foundUser.getId(),
-                foundUser.getEmail(),
-                foundUser.getFirstName(),
-                foundUser.getLastName()
+                token
         );
+
+        System.out.println("[DEBUG] User logged in: " + foundUser.getEmail());
+        System.out.println("[DEBUG] Token generated: " + token);
 
         return ResponseEntity.ok(response);
     }

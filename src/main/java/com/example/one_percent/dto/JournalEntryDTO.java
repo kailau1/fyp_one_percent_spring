@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JournalEntryDTO {
+
     private String id;
     private String title;
     private String content;

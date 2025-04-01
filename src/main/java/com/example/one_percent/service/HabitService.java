@@ -5,13 +5,15 @@ import com.example.one_percent.mapper.HabitMapper;
 import com.example.one_percent.model.Habit;
 import com.example.one_percent.model.User;
 import com.example.one_percent.repository.HabitRepository;
-import com.example.one_percent.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PostConstruct;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -23,25 +25,29 @@ public class HabitService {
 
     private final HabitRepository habitRepository;
     private final HabitMapper habitMapper;
-    private final UserRepository userRepository;
+    private static final Logger logger = LoggerFactory.getLogger(HabitService.class);
 
-    @PostConstruct
-    public void debugMapper() {
-        System.out.println("[DEBUG] Injected HabitMapper = " + habitMapper);
+
+    private User getAuthenticatedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Object principal = auth.getPrincipal();
+
+        if (principal instanceof User user) {
+            return user;
+        } else {
+            throw new IllegalStateException("Unexpected principal type: " + principal);
+        }
     }
 
     public HabitDTO createHabit(HabitDTO habitDTO) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = auth.getName();
-
-        User user = userRepository.findByEmail(email);
+        User user = getAuthenticatedUser();
 
         Habit habit = habitMapper.toEntity(habitDTO);
         habit.setUserId(user.getId());
         habit.setCreatedAt(LocalDateTime.now());
         habit.setLastUpdated(LocalDateTime.now());
 
-        if ("RECOMMENDED".equalsIgnoreCase(habit.getHabitType())) {
+        if ("trigger-action".equalsIgnoreCase(habit.getHabitType())) {
             if (habit.getTrigger() == null || habit.getAction() == null) {
                 throw new IllegalArgumentException("Recommended habits must have both a trigger and an action.");
             }
@@ -51,21 +57,13 @@ public class HabitService {
     }
 
     public List<HabitDTO> getHabitsByUser() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = getAuthenticatedUser();
+        List<Habit> habits = habitRepository.findByUserId(user.getId());
 
-        if (principal instanceof User user) {
-            String userId = user.getId();
-
-            List<Habit> habits = habitRepository.findByUserId(userId);
-
-            return habits.stream()
-                    .map(habitMapper::toDto)
-                    .collect(Collectors.toList());
-        } else {
-            throw new IllegalStateException("Unexpected principal type: " + principal);
-        }
+        return habits.stream()
+                .map(habitMapper::toDto)
+                .collect(Collectors.toList());
     }
-
 
     public HabitDTO updateHabit(HabitDTO habitDTO) {
         Optional<Habit> existingHabit = habitRepository.findById(habitDTO.getId());
@@ -73,6 +71,7 @@ public class HabitService {
             Habit habitToUpdate = existingHabit.get();
             habitToUpdate.setHabitName(habitDTO.getHabitName());
             habitToUpdate.setDescription(habitDTO.getDescription());
+            habitToUpdate.setColour(habitDTO.getColour());
             habitToUpdate.setCompleted(habitDTO.isCompleted());
             habitToUpdate.setHabitType(habitDTO.getHabitType());
             habitToUpdate.setTrigger(habitDTO.getTrigger());
@@ -98,9 +97,12 @@ public class HabitService {
             Habit habit = habitOptional.get();
             habit.setCompleted(true);
             habit.setLastUpdated(LocalDateTime.now());
-            return habitMapper.toDto(habitRepository.save(habit));
+            Habit updatedHabit = habitRepository.save(habit);
+            return habitMapper.toDto(updatedHabit);
+        } else {
+            logger.error("Habit not found with ID: {}", id);
+            throw new IllegalArgumentException("Habit not found with ID: " + id);
         }
-        throw new IllegalArgumentException("Habit not found with ID: " + id);
     }
 
     public HabitDTO uncompleteHabit(String id) {
