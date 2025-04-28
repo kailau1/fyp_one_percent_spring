@@ -1,7 +1,7 @@
-package com.example.one_percent.controller;
+package com.example.one_percent.controller.core;
 
 import com.example.one_percent.dto.HabitDTO;
-import com.example.one_percent.service.HabitService;
+import com.example.one_percent.service.habit.HabitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,15 +41,5 @@ public class HabitController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/complete/{id}")
-    public ResponseEntity<HabitDTO> completeHabit(@PathVariable String id) {
-        HabitDTO completedHabit = habitService.completeHabit(id);
-        return ResponseEntity.ok(completedHabit);
-    }
-
-    @PostMapping("/uncomplete/{id}")
-    public ResponseEntity<HabitDTO> uncompleteHabit(@PathVariable String id) {
-        HabitDTO uncompletedHabit = habitService.uncompleteHabit(id);
-        return ResponseEntity.ok(uncompletedHabit);
     }
 }

@@ -1,4 +1,4 @@
-package com.example.one_percent.service;
+package com.example.one_percent.service.habit;
 
 import com.example.one_percent.dto.HabitDTO;
 import com.example.one_percent.mapper.HabitMapper;
@@ -12,8 +12,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -91,28 +89,5 @@ public class HabitService {
         }
     }
 
-    public HabitDTO completeHabit(String id) {
-        Optional<Habit> habitOptional = habitRepository.findById(id);
-        if (habitOptional.isPresent()) {
-            Habit habit = habitOptional.get();
-            habit.setCompleted(true);
-            habit.setLastUpdated(LocalDateTime.now());
-            Habit updatedHabit = habitRepository.save(habit);
-            return habitMapper.toDto(updatedHabit);
-        } else {
-            logger.error("Habit not found with ID: {}", id);
-            throw new IllegalArgumentException("Habit not found with ID: " + id);
-        }
-    }
 
-    public HabitDTO uncompleteHabit(String id) {
-        Optional<Habit> habitOptional = habitRepository.findById(id);
-        if (habitOptional.isPresent()) {
-            Habit habit = habitOptional.get();
-            habit.setCompleted(false);
-            habit.setLastUpdated(LocalDateTime.now());
-            return habitMapper.toDto(habitRepository.save(habit));
-        }
-        throw new IllegalArgumentException("Habit not found with ID: " + id);
-    }
 }

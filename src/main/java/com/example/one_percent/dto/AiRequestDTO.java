@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiRequestDTO {
+    private String journalId;
     private String journalContent;
+    private String userId;
 }
 

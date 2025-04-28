@@ -7,6 +7,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Document(collection = "users")
 @NoArgsConstructor
@@ -20,5 +22,7 @@ public class User {
     private String lastName;
     private String email;
     private String password;
+    private List<String> frequentThemes;
+    private int themeUsageCount;
 
 }

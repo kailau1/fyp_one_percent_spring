@@ -2,6 +2,7 @@ package com.example.one_percent.service;
 
 import com.example.one_percent.model.Habit;
 import com.example.one_percent.repository.HabitRepository;
+import com.example.one_percent.service.habit.HabitResetService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -24,6 +24,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users/login", "/api/users/register").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**").permitAll()
+                        .requestMatchers("/api/test-ai/**").permitAll()
                         .requestMatchers("/api/journals/**").authenticated()
                         .requestMatchers("/api/habits/**").authenticated()
                         .anyRequest().authenticated()

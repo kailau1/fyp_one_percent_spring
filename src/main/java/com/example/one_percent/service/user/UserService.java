@@ -1,4 +1,4 @@
-package com.example.one_percent.service;
+package com.example.one_percent.service.user;
 
 import com.example.one_percent.dto.UserDTO;
 import com.example.one_percent.dto.auth.AuthResponseDTO;

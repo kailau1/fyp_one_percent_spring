@@ -1,4 +1,4 @@
-package com.example.one_percent.service;
+package com.example.one_percent.service.habit;
 
 import com.example.one_percent.model.HabitHistory;
 import com.example.one_percent.model.User;
@@ -19,7 +19,6 @@ import java.util.Optional;
 public class HabitHistoryService {
 
     private final HabitHistoryRepository habitHistoryRepository;
-    private static final Logger logger = LoggerFactory.getLogger(HabitHistoryService.class);
 
     private User getAuthenticatedUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

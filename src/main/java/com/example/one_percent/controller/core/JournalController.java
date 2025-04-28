@@ -1,7 +1,7 @@
-package com.example.one_percent.controller;
+package com.example.one_percent.controller.core;
 
 import com.example.one_percent.dto.JournalEntryDTO;
-import com.example.one_percent.service.JournalService;
+import com.example.one_percent.service.journal.JournalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,11 +41,6 @@ public class JournalController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/response/{id}")
-    public ResponseEntity<Void> addResponse(@PathVariable String id, @RequestBody String response) {
-        journalService.addResponse(id, response);
-        return ResponseEntity.ok().build();
-    }
 
     @PutMapping("/entry")
     public ResponseEntity<JournalEntryDTO> updateJournal(@RequestBody JournalEntryDTO entryDTO) {

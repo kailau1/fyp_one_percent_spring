@@ -1,15 +1,13 @@
-package com.example.one_percent.controller;
+package com.example.one_percent.controller.core;
 
 import com.example.one_percent.dto.UserDTO;
 import com.example.one_percent.dto.auth.UserRegistrationDTO;
 import com.example.one_percent.dto.auth.LoginRequestDTO;
 import com.example.one_percent.dto.auth.AuthResponseDTO;
-import com.example.one_percent.service.UserService;
+import com.example.one_percent.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
