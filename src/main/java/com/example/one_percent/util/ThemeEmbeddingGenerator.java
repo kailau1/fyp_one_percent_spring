@@ -11,6 +11,7 @@ import java.util.*;
 
 
 
+
 public class ThemeEmbeddingGenerator {
 
 
@@ -61,7 +62,7 @@ public class ThemeEmbeddingGenerator {
 
         Request request = new Request.Builder()
                 .url(OPENAI_EMBEDDING_URL)
-                .addHeader("Authorization", "Bearer " + "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") // your key
+                .addHeader("Authorization", "Bearer " + System.getenv("OPENAI_API_KEY"))
                 .addHeader("Content-Type", "application/json")
                 .post(RequestBody.create(requestBody, MediaType.parse("application/json")))
                 .build();

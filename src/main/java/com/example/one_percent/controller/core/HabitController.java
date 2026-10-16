@@ -41,5 +41,5 @@ public class HabitController {
         return ResponseEntity.noContent().build();
     }
 
-    }
-}
+ }
+

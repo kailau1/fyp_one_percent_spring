@@ -31,7 +31,7 @@ public class EmbeddingSimilarityTest {
     @BeforeEach
     void setup() {
         embeddingService = new EmbeddingService(journalRepository);
-        ReflectionTestUtils.setField(embeddingService, "apiKey", "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");
+        ReflectionTestUtils.setField(embeddingService, "apiKey", System.getenv("OPENAI_API_KEY"));
 
     }
 
