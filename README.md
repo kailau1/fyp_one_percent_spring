@@ -100,5 +100,4 @@ Being honest about where this project would go with more time:
 
 - **Testing:** the current tests are exploratory integration tests that call the real database and OpenAI. I'd add unit tests for the similarity and context-building logic with a mocked `OpenAIClient`, so they're fast, free and deterministic.
 - **Authorisation checks:** fetching or deleting a journal by ID should verify that the entry belongs to the authenticated user.
-- **Remove the test endpoint:** `/api/test-ai` is open without authentication for development; it should be removed or secured.
 - **Logging and resilience:** replace remaining `System.out` calls with structured logging, reuse a single HTTP client, and add retries/timeouts around OpenAI calls.
