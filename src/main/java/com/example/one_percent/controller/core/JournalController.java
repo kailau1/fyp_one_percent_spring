@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/journals")
@@ -30,9 +29,8 @@ public class JournalController {
     }
 
     @GetMapping("/entry/{id}")
-    public ResponseEntity<Optional<JournalEntryDTO>> getJournalById(@PathVariable String id) {
-        Optional<JournalEntryDTO> journal = journalService.getJournalById(id);
-        return ResponseEntity.ok(journal);
+    public ResponseEntity<JournalEntryDTO> getJournalById(@PathVariable String id) {
+        return ResponseEntity.ok(journalService.getJournalById(id));
     }
 
     @DeleteMapping("/{id}")

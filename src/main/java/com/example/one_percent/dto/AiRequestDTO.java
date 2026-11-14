@@ -10,6 +10,6 @@ import lombok.AllArgsConstructor;
 public class AiRequestDTO {
     private String journalId;
     private String journalContent;
-    private String userId;
+    // No userId: the user always comes from the JWT, never from the request body.
+    // (Older app builds still send one; Jackson ignores unknown fields.)
 }
-

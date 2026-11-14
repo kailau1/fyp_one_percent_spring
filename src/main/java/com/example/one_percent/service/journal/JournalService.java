@@ -1,10 +1,10 @@
 package com.example.one_percent.service.journal;
 
 import com.example.one_percent.dto.JournalEntryDTO;
+import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.JournalEntryMapper;
 import com.example.one_percent.model.JournalEntry;
 import com.example.one_percent.model.User;
-import com.example.one_percent.service.ai.AiService;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.ai.SummaryService;
 import com.example.one_percent.repository.JournalRepository;
@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +38,17 @@ public class JournalService {
         }
     }
 
+    /**
+     * Fetches a journal entry by ID, but only if it belongs to the authenticated user.
+     * Entries owned by someone else are treated exactly like missing ones (404), so callers
+     * can't probe for the existence of other users' entries.
+     */
+    public JournalEntry getOwnedJournalEntry(String id) {
+        User user = getAuthenticatedUser();
+        return journalRepository.findByIdAndUserId(id, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found: " + id));
+    }
+
     public List<JournalEntryDTO> getJournalsByAuthenticatedUser() {
         User user = getAuthenticatedUser();
 
@@ -52,6 +62,7 @@ public class JournalService {
         User user = getAuthenticatedUser();
 
         JournalEntry entry = journalMapper.toEntity(entryDTO);
+        entry.setId(null); // never let the client choose (or overwrite) an ID on create
         entry.setUserId(user.getId());
         entry.setCreatedAt(LocalDateTime.now());
 
@@ -71,59 +82,48 @@ public class JournalService {
         return journalMapper.toDto(journalRepository.save(entry));
     }
 
-
-    public Optional<JournalEntryDTO> getJournalById(String id) {
-        return journalRepository.findById(id)
-                .map(journalMapper::toDto);
+    public JournalEntryDTO getJournalById(String id) {
+        return journalMapper.toDto(getOwnedJournalEntry(id));
     }
 
     public void deleteJournalEntry(String id) {
-        journalRepository.deleteById(id);
+        journalRepository.delete(getOwnedJournalEntry(id));
     }
 
     public JournalEntryDTO updateJournalEntry(JournalEntryDTO entryDTO) {
-        Optional<JournalEntry> existingJournal = journalRepository.findById(entryDTO.getId());
-        if (existingJournal.isPresent()) {
-            JournalEntry journalToUpdate = existingJournal.get();
-            journalToUpdate.setTitle(entryDTO.getTitle());
-            journalToUpdate.setContent(entryDTO.getContent());
-            journalToUpdate.setLlmResponse(entryDTO.getLlmResponse());
+        JournalEntry journalToUpdate = getOwnedJournalEntry(entryDTO.getId());
+        journalToUpdate.setTitle(entryDTO.getTitle());
+        journalToUpdate.setContent(entryDTO.getContent());
+        journalToUpdate.setLlmResponse(entryDTO.getLlmResponse());
 
-            return journalMapper.toDto(journalRepository.save(journalToUpdate));
-        }
-        throw new IllegalArgumentException("Journal not found with ID: " + entryDTO.getId());
+        return journalMapper.toDto(journalRepository.save(journalToUpdate));
     }
 
-    public JournalEntry saveAndProcessJournal(String content, String userId) throws IOException {
+    /**
+     * Builds an in-memory (unsaved) entry for the authenticated user so AI feedback can be
+     * generated for a draft that hasn't been saved yet. It isn't persisted: the app saves the
+     * entry (with its feedback) itself when the user taps "Done". Persisting here used to leave
+     * an untitled duplicate behind for every draft that asked for feedback.
+     */
+    public JournalEntry buildDraftEntry(String content) throws IOException {
         JournalEntry entry = new JournalEntry();
-        entry.setUserId(userId);
+        entry.setUserId(getAuthenticatedUser().getId());
         entry.setContent(content);
-
-        List<Double> contentEmbedding = embeddingService.generateEmbedding(entry.getContent());
-        entry.setContentEmbedding(contentEmbedding);
-
-        return journalRepository.save(entry);
+        entry.setContentEmbedding(embeddingService.generateEmbedding(content));
+        return entry;
     }
 
     public void addResponse(String journalId, String llmResponse) {
-        Optional<JournalEntry> optionalEntry = journalRepository.findById(journalId);
+        JournalEntry entry = getOwnedJournalEntry(journalId);
+        entry.setLlmResponse(llmResponse);
 
-        if (optionalEntry.isPresent()) {
-            JournalEntry entry = optionalEntry.get();
-            entry.setLlmResponse(llmResponse);
-
-            try {
-                String feedbackSummary = summaryService.getFeedbackSummary(llmResponse);
-                entry.setLlmSummary(feedbackSummary);
-
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to summarise or embed LLM response", e);
-            }
-
-            journalRepository.save(entry);
-        } else {
-            throw new IllegalArgumentException("Journal not found: " + journalId);
+        try {
+            entry.setLlmSummary(summaryService.getFeedbackSummary(llmResponse));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to summarise LLM response", e);
         }
+
+        journalRepository.save(entry);
     }
 
 }

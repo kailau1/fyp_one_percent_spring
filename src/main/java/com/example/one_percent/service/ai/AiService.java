@@ -2,8 +2,6 @@ package com.example.one_percent.service.ai;
 
 import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.model.JournalEntry;
-import com.example.one_percent.repository.JournalRepository;
-import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.journal.JournalService;
 import com.example.one_percent.util.ContextUtil;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -20,23 +18,29 @@ import java.util.List;
 @Service
 public class AiService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AiService.class);
+
     private final OpenAIClient openAIClient;
     private final JournalService journalService;
     private final ContextUtil contextUtil;
-    private final JournalRepository journalRepository;
 
-   public String getAiFeedback(String journalId, String content, String userId) throws IOException {
+    /**
+     * Generates feedback for a journal entry belonging to the authenticated user.
+     * If {@code journalId} is given the stored entry is used (and must be owned by the caller);
+     * otherwise feedback is generated for the unsaved draft {@code content}.
+     */
+    public String getAiFeedback(String journalId, String content) throws IOException {
         JournalEntry journal;
 
-        if (journalId != null && !journalId.isEmpty()) {
-            journal = journalRepository.findById(journalId)
-                    .orElseThrow(() -> new IllegalArgumentException("Journal not found for ID: " + journalId));
+        if (journalId != null && !journalId.isBlank()) {
+            journal = journalService.getOwnedJournalEntry(journalId);
         } else if (content != null && !content.isBlank()) {
-            journal = journalService.saveAndProcessJournal(content, userId);
+            journal = journalService.buildDraftEntry(content);
         } else {
             throw new IllegalArgumentException("Either journalId or content must be provided.");
         }
 
+        String userId = journal.getUserId();
         String journalContent = journal.getContent();
         String userContext = contextUtil.getUserContext(userId);
         String llmContext = contextUtil.getLLMContext(journal);
@@ -62,8 +66,7 @@ public class AiService {
         ObjectNode userMessage = openAIClient.createSingleMessage("user", fullUserInput);
         ArrayNode messages = openAIClient.createMessages(List.of(systemMessage, userMessage));
 
-        System.out.println("=== LLM REQUEST PAYLOAD ===");
-        System.out.println(messages.toPrettyString());
+        logger.debug("LLM request payload: {}", messages);
 
         return openAIClient.sendChatCompletion(messages, "gpt-4o", 200, 0.7);
     }

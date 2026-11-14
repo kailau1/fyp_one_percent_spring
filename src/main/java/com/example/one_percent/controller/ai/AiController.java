@@ -18,8 +18,14 @@ public class AiController {
 
     @PostMapping("/feedback")
     public AiResponseDTO getAiFeedback(@RequestBody AiRequestDTO request) throws Exception {
-        String feedback = aiService.getAiFeedback(request.getJournalId(), request.getJournalContent(), request.getUserId());
-        journalService.addResponse(request.getJournalId(), feedback);
+        String journalId = request.getJournalId();
+        String feedback = aiService.getAiFeedback(journalId, request.getJournalContent());
+
+        // Only saved entries can have feedback attached. Drafts get their feedback stored
+        // when the app creates the entry (it sends llmResponse with the create request).
+        if (journalId != null && !journalId.isBlank()) {
+            journalService.addResponse(journalId, feedback);
+        }
         return new AiResponseDTO(feedback);
     }
 
