@@ -20,7 +20,10 @@ The old copy on `/mnt/c/Users/Kai Lau/Documents/work/one_percent_spring` is only
 
 - Run tests: `mvn test`. They're offline unit/web-layer tests (no MongoDB or OpenAI needed).
 - Integration tests against the real DB and OpenAI: `RUN_INTEGRATION_TESTS=true mvn test`.
-- Run the app: `mvn spring-boot:run` (needs a local `application.properties`, see README).
+- Run the app from WSL: `scripts/dev-run.sh`. MongoDB is installed on **Windows**, which WSL can't reach as
+  `localhost`; the script points the app at the Windows host. It uses the `fyp_dev` database by default
+  (dev accounts: `web-dev@onepercent.local` / `web-dev-2@onepercent.local`, password `dev-password-1`);
+  `MONGO_DB=fyp scripts/dev-run.sh` uses the real data. Needs a local `application.properties` (see README).
 
 ## Conventions
 
