@@ -94,7 +94,8 @@ class HabitHistoryServiceTest {
         LocalDate from = LocalDate.of(2026, 1, 1);
         LocalDate to = LocalDate.of(2026, 1, 31);
         HabitHistory record = new HabitHistory("rec1", "alice", "h1", LocalDate.of(2026, 1, 15), true);
-        when(repository.findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc("alice", from, to))
+        // inclusive range for callers; the repository's Between is exclusive, so it is asked for a day either side
+        when(repository.findByUserIdAndDateBetweenOrderByDateDesc("alice", from.minusDays(1), to.plusDays(1)))
                 .thenReturn(List.of(record));
 
         assertThat(service.getHistoryBetween(from, to)).containsExactly(record);
@@ -104,8 +105,8 @@ class HabitHistoryServiceTest {
     void getHistoryBetween_defaultsToTheLastYear() {
         service.getHistoryBetween(null, null);
 
-        verify(repository).findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc(
-                "alice", LocalDate.now().minusDays(365), LocalDate.now());
+        verify(repository).findByUserIdAndDateBetweenOrderByDateDesc(
+                "alice", LocalDate.now().minusDays(366), LocalDate.now().plusDays(1));
     }
 
     @Test

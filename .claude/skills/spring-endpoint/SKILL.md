@@ -47,6 +47,12 @@ message is shown to users, so write it for them), anything else → 500.
 ```
 Cover: no token → rejected, own record → 200, someone else's → 404, bad input → 400.
 
+**Then run the endpoint once for real.** Mocked tests can't see repository mistakes: a derived query
+that Spring Data can't actually build (e.g. two conditions on the same field, like
+`findBy…DateGreaterThanEqualAndDateLessThanEqual`) compiles, passes every mocked test, and fails with a
+500 the first time it runs. After adding or changing a repository method, start the app with
+`scripts/dev-run.sh` and `curl` the route (log in as a dev account for a token) before committing.
+
 Tests must run offline: mock `OpenAIClient` (or `spy` it and stub `sendChatCompletion`), never call OpenAI
 or need MongoDB. Anything needing the real DB goes behind `RUN_INTEGRATION_TESTS=true`.
 

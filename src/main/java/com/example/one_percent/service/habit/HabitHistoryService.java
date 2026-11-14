@@ -72,8 +72,9 @@ public class HabitHistoryService {
         if (start.isAfter(end)) {
             throw new IllegalArgumentException("'from' must not be after 'to'.");
         }
+        // the repository's Between is exclusive at both ends, so widen by a day each side
         return habitHistoryRepository
-                .findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc(user.getId(), start, end);
+                .findByUserIdAndDateBetweenOrderByDateDesc(user.getId(), start.minusDays(1), end.plusDays(1));
     }
 
     public HabitHistory markHabitCompleted(String habitId) {

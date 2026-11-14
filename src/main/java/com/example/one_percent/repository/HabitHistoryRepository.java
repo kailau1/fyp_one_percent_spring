@@ -12,7 +12,10 @@ public interface HabitHistoryRepository extends MongoRepository<HabitHistory, St
     List<HabitHistory> findByUserIdAndDate(String userId, LocalDate date);
     List<HabitHistory> findByUserIdAndHabitIdOrderByDateDesc(String userId, String habitId);
 
-    /** All of a user's records between two days, inclusive. */
-    List<HabitHistory> findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc(
-            String userId, LocalDate from, LocalDate to);
+    /**
+     * A user's records strictly between two days (both ends EXCLUSIVE, which is how Spring Data
+     * MongoDB reads "Between"). A derived query can't use two separate conditions on the same
+     * field (DateGreaterThanEqualAndDateLessThanEqual fails at runtime), hence Between.
+     */
+    List<HabitHistory> findByUserIdAndDateBetweenOrderByDateDesc(String userId, LocalDate after, LocalDate before);
 }
