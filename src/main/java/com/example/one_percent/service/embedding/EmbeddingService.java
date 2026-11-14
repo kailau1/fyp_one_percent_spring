@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,36 +108,39 @@ public class EmbeddingService {
         return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
     }
 
+    /** How many themes each entry counts towards. */
+    public static final int THEMES_PER_ENTRY = 3;
+
+    /**
+     * The `n` themes closest to an entry's embedding, closest first. Empty when the embedding is
+     * missing or can't be compared with the theme vectors (a different length means a different
+     * model, e.g. one made by a local stand-in): those entries simply aren't analysed, rather than
+     * being given three arbitrary themes.
+     */
+    public List<String> closestThemes(List<Double> embedding, int n) {
+        if (embedding == null || embedding.isEmpty() || themeEmbeddings.isEmpty()) return List.of();
+        int dimensions = themeEmbeddings.values().iterator().next().size();
+        if (embedding.size() != dimensions) return List.of();
+        return themeEmbeddings.entrySet().stream()
+                .sorted(Comparator.comparingDouble((Map.Entry<String, List<Double>> theme) -> -cosineSimilarity(embedding, theme.getValue()))
+                        .thenComparing(Map.Entry::getKey))
+                .limit(n)
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    /** The user's three most common themes across their entries. */
     public List<String> getFrequentThemes(String userId) {
-        List<JournalEntry> entries = journalRepository.findByUserId(userId);
         Map<String, Integer> themeCounts = new HashMap<>();
-
-        for (JournalEntry entry : entries) {
-            List<Double> userEmb = entry.getContentEmbedding();
-            if (userEmb == null) continue;
-
-            Map<String, Double> similarities = new HashMap<>();
-            for (Map.Entry<String, List<Double>> theme : themeEmbeddings.entrySet()) {
-                double similarity = cosineSimilarity(userEmb, theme.getValue());
-                similarities.put(theme.getKey(), similarity);
+        for (JournalEntry entry : journalRepository.findByUserId(userId)) {
+            for (String theme : closestThemes(entry.getContentEmbedding(), THEMES_PER_ENTRY)) {
+                themeCounts.merge(theme, 1, Integer::sum);
             }
-
-            similarities.entrySet().stream()
-                    .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
-                    .limit(3)
-                    .forEach(entryTop -> {
-                        themeCounts.put(entryTop.getKey(), themeCounts.getOrDefault(entryTop.getKey(), 0) + 1);
-                    });
         }
-
         return themeCounts.entrySet().stream()
-                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
                 .limit(3)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
-
     }
-
-
 }
-

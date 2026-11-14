@@ -102,6 +102,26 @@ class EmbeddingServiceTest {
     }
 
     @Test
+    void closestThemes_ranksByCosineSimilarity() {
+        themes().putAll(Map.of(
+                "procrastination", List.of(1.0, 0.0, 0.0),
+                "self-doubt", List.of(0.0, 1.0, 0.0),
+                "gratitude", List.of(0.0, 0.0, 1.0)));
+
+        assertThat(embeddingService.closestThemes(List.of(0.2, 0.9, 0.5), 2)).containsExactly("self-doubt", "gratitude");
+    }
+
+    @Test
+    void closestThemes_skipsEmbeddingsThatCantBeCompared() {
+        themes().put("procrastination", List.of(1.0, 0.0, 0.0));
+
+        // a different length means a different model (e.g. a local stand-in): no themes, not three random ones
+        assertThat(embeddingService.closestThemes(List.of(1.0, 0.0), 3)).isEmpty();
+        assertThat(embeddingService.closestThemes(null, 3)).isEmpty();
+        assertThat(embeddingService.closestThemes(List.of(), 3)).isEmpty();
+    }
+
+    @Test
     void getFrequentThemes_isEmptyWhenUserHasNoEmbeddedEntries() {
         themes().put("procrastination", List.of(1.0));
         when(journalRepository.findByUserId("alice")).thenReturn(new ArrayList<>(List.of(entryWithEmbedding(null))));

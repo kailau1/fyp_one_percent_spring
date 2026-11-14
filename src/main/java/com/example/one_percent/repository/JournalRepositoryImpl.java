@@ -49,6 +49,14 @@ public class JournalRepositoryImpl implements JournalRepositoryCustom {
     }
 
     @Override
+    public List<JournalEntry> findForThemes(String userId) {
+        Query query = Query.query(Criteria.where("userId").is(userId))
+                .with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("_id")));
+        query.fields().include("title", "createdAt", "contentEmbedding");
+        return mongoTemplate.find(query, JournalEntry.class);
+    }
+
+    @Override
     public List<Instant> findCreatedAtBetween(String userId, Instant from, Instant to) {
         Query query = Query.query(Criteria.where("userId").is(userId).and("createdAt").gte(from).lt(to));
         query.fields().include("createdAt");
