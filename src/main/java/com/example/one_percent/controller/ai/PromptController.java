@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/ai/prompt")
-@CrossOrigin
 @RequiredArgsConstructor
 public class PromptController {
 
