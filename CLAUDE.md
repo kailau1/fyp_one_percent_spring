@@ -2,6 +2,8 @@
 
 One Percent backend: Spring Boot 3.1 + MongoDB + OpenAI (Java 17, Maven).
 The mobile frontend is a separate repo at `~/projects/one_percent_mobile` (remote `fyp_one_percent`).
+Work in this copy (`~/projects/one_percent_spring`, Linux filesystem; open it in IntelliJ via `\\wsl$\Ubuntu\home\kai\projects`).
+The old copy on `/mnt/c/Users/Kai Lau/Documents/work/one_percent_spring` is only a backup.
 
 ## Git workflow (always follow)
 
