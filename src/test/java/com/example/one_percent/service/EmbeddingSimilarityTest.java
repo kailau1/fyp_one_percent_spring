@@ -5,9 +5,9 @@ import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.repository.JournalRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -18,8 +18,13 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Exploratory integration test against the real database and OpenAI.
+ * Skipped by default; run with RUN_INTEGRATION_TESTS=true (needs MongoDB, OPENAI_API_KEY
+ * and the persona user below to exist).
+ */
 @SpringBootTest
-@RequiredArgsConstructor
+@EnabledIfEnvironmentVariable(named = "RUN_INTEGRATION_TESTS", matches = "true")
 public class EmbeddingSimilarityTest {
 
     @Autowired
