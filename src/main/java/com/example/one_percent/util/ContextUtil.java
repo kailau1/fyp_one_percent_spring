@@ -34,21 +34,17 @@ public class ContextUtil {
 
         StringBuilder context = new StringBuilder("Context for the assistant:\n");
 
-        if (!habits.isEmpty()) {
-            context.append("- User's active habits include:\n");
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
+        String habitDescriptions = habits.stream()
+                // Only recently-active habits; stale ones used to be joined in as the text "null".
+                .filter(habit -> habit.getLastUpdated() != null && habit.getLastUpdated().isAfter(cutoff))
+                .map(habit -> "trigger-action".equalsIgnoreCase(habit.getHabitType())
+                        ? "Trigger: " + habit.getTrigger() + " → Action: " + habit.getAction()
+                        : habit.getHabitName())
+                .collect(Collectors.joining(", "));
 
-            String habitDescriptions = habits.stream()
-                    .map(habit -> {
-                        if (habit.getLastUpdated().isAfter(LocalDateTime.now().minusDays(7))) {
-                            if ("trigger-action".equalsIgnoreCase(habit.getHabitType())) {
-                                return "Trigger: " + habit.getTrigger() + " → Action: " + habit.getAction();
-                            } else {
-                                return habit.getHabitName();
-                            }
-                        }
-                        return null;
-                    })
-                    .collect(Collectors.joining(", "));
+        if (!habitDescriptions.isEmpty()) {
+            context.append("- User's active habits include:\n");
             context.append(habitDescriptions).append(".\n");
         }
 
@@ -80,7 +76,8 @@ public class ContextUtil {
         if (summaries.isEmpty()) {
             summaries = pastEntries.stream()
                     .filter(p -> p.getLlmSummary() != null)
-                    .sorted(Comparator.comparing(JournalEntry::getCreatedAt).reversed())
+                    .sorted(Comparator.comparing(JournalEntry::getCreatedAt,
+                            Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(3)
                     .map(JournalEntry::getLlmSummary)
                     .toList();
