@@ -5,9 +5,11 @@ import com.example.one_percent.service.habit.HabitHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +31,14 @@ public class HabitHistoryController {
     public ResponseEntity<List<HabitHistory>> getTodayHabits() {
         logger.info("Fetching today's habits for the authenticated user");
         return ResponseEntity.ok(habitHistoryService.getTodayHabits());
+    }
+
+    /** All of the user's history in a date range (default: the last year), e.g. ?from=2026-01-01&to=2026-12-31 */
+    @GetMapping
+    public ResponseEntity<List<HabitHistory>> getHistory(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(habitHistoryService.getHistoryBetween(from, to));
     }
 
     @GetMapping("/{habitId}")

@@ -61,6 +61,21 @@ public class HabitHistoryService {
         return habitHistoryRepository.findByUserIdAndHabitIdOrderByDateDesc(user.getId(), habitId);
     }
 
+    /**
+     * Every history record for the authenticated user between two days (inclusive), across all
+     * their habits. Defaults to the last year. One request instead of one per habit.
+     */
+    public List<HabitHistory> getHistoryBetween(LocalDate from, LocalDate to) {
+        User user = getAuthenticatedUser();
+        LocalDate end = to != null ? to : LocalDate.now();
+        LocalDate start = from != null ? from : end.minusDays(365);
+        if (start.isAfter(end)) {
+            throw new IllegalArgumentException("'from' must not be after 'to'.");
+        }
+        return habitHistoryRepository
+                .findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc(user.getId(), start, end);
+    }
+
     public HabitHistory markHabitCompleted(String habitId) {
         User user = requireOwnerOf(habitId);
         HabitHistory history = habitHistoryRepository

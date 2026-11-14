@@ -90,6 +90,31 @@ class HabitHistoryServiceTest {
     }
 
     @Test
+    void getHistoryBetween_returnsTheCurrentUsersRecordsInTheRange() {
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        LocalDate to = LocalDate.of(2026, 1, 31);
+        HabitHistory record = new HabitHistory("rec1", "alice", "h1", LocalDate.of(2026, 1, 15), true);
+        when(repository.findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc("alice", from, to))
+                .thenReturn(List.of(record));
+
+        assertThat(service.getHistoryBetween(from, to)).containsExactly(record);
+    }
+
+    @Test
+    void getHistoryBetween_defaultsToTheLastYear() {
+        service.getHistoryBetween(null, null);
+
+        verify(repository).findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc(
+                "alice", LocalDate.now().minusDays(365), LocalDate.now());
+    }
+
+    @Test
+    void getHistoryBetween_rejectsABackwardsRange() {
+        assertThatThrownBy(() -> service.getHistoryBetween(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 1, 1)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void unmarkCompleted_setsTodaysRecordToNotCompleted() {
         HabitHistory existing = new HabitHistory("rec1", "alice", "h1", LocalDate.now(), true);
         when(repository.findByUserIdAndHabitIdAndDate("alice", "h1", LocalDate.now())).thenReturn(Optional.of(existing));

@@ -64,6 +64,26 @@ class HabitHistoryControllerTest {
     }
 
     @Test
+    void returnsAllHistoryForADateRange() throws Exception {
+        when(habitHistoryService.getHistoryBetween(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+                .thenReturn(List.of(new HabitHistory("r1", "alice", "h1", LocalDate.of(2026, 1, 15), true)));
+
+        mvc.perform(get("/api/habit-history?from=2026-01-01&to=2026-01-31").header("Authorization", TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].habitId").value("h1"))
+                .andExpect(jsonPath("$[0].date").value("2026-01-15"));
+    }
+
+    @Test
+    void rangeIsOptional() throws Exception {
+        when(habitHistoryService.getHistoryBetween(null, null)).thenReturn(List.of());
+
+        mvc.perform(get("/api/habit-history").header("Authorization", TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
     void anotherUsersHabitIs404() throws Exception {
         when(habitHistoryService.getHabitHistory("bobs")).thenThrow(new ResourceNotFoundException("Habit not found: bobs"));
         when(habitHistoryService.markHabitCompleted("bobs")).thenThrow(new ResourceNotFoundException("Habit not found: bobs"));

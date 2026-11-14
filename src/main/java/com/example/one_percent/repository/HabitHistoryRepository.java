@@ -11,4 +11,8 @@ public interface HabitHistoryRepository extends MongoRepository<HabitHistory, St
     Optional<HabitHistory> findByUserIdAndHabitIdAndDate(String userId, String habitId, LocalDate date);
     List<HabitHistory> findByUserIdAndDate(String userId, LocalDate date);
     List<HabitHistory> findByUserIdAndHabitIdOrderByDateDesc(String userId, String habitId);
+
+    /** All of a user's records between two days, inclusive. */
+    List<HabitHistory> findByUserIdAndDateGreaterThanEqualAndDateLessThanEqualOrderByDateDesc(
+            String userId, LocalDate from, LocalDate to);
 }
