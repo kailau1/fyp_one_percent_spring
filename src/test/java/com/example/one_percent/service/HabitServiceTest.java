@@ -4,6 +4,8 @@ import com.example.one_percent.dto.HabitDTO;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.HabitMapper;
 import com.example.one_percent.model.Habit;
+import com.example.one_percent.model.HabitHistory;
+import com.example.one_percent.repository.HabitHistoryRepository;
 import com.example.one_percent.repository.HabitRepository;
 import com.example.one_percent.service.habit.HabitService;
 import com.example.one_percent.support.TestAuth;
@@ -16,11 +18,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -29,13 +33,15 @@ class HabitServiceTest {
 
     @Mock
     private HabitRepository habitRepository;
+    @Mock
+    private HabitHistoryRepository habitHistoryRepository;
 
     private final HabitMapper mapper = Mappers.getMapper(HabitMapper.class);
     private HabitService habitService;
 
     @BeforeEach
     void setUp() {
-        habitService = new HabitService(habitRepository, mapper);
+        habitService = new HabitService(habitRepository, mapper, habitHistoryRepository);
         TestAuth.loginAs("alice");
     }
 
@@ -93,6 +99,37 @@ class HabitServiceTest {
         when(habitRepository.findByUserId("alice")).thenReturn(List.of(h));
 
         assertThat(habitService.getHabitsByUser()).extracting(HabitDTO::getId).containsExactly("h1");
+    }
+
+    @Test
+    void getHabitsByUser_marksHabitsCompletedFromTodaysHistory() {
+        // the stored flag is deliberately wrong on both: only today's history counts
+        Habit ticked = new Habit("h1", "alice", "Read", null, "#fff", false, "standard", null, null, null, null);
+        Habit unticked = new Habit("h2", "alice", "Run", null, "#fff", true, "standard", null, null, null, null);
+        Habit untickedAgain = new Habit("h3", "alice", "Stretch", null, "#fff", false, "standard", null, null, null, null);
+        when(habitRepository.findByUserId("alice")).thenReturn(List.of(ticked, unticked, untickedAgain));
+        when(habitHistoryRepository.findByUserIdAndDate("alice", LocalDate.now())).thenReturn(List.of(
+                new HabitHistory("r1", "alice", "h1", LocalDate.now(), true),
+                new HabitHistory("r3", "alice", "h3", LocalDate.now(), false)));  // ticked then un-ticked
+
+        List<HabitDTO> result = habitService.getHabitsByUser();
+
+        assertThat(result).extracting(HabitDTO::getId, HabitDTO::isCompleted)
+                .containsExactly(tuple("h1", true), tuple("h2", false), tuple("h3", false));
+    }
+
+    @Test
+    void updateHabit_keepsTodaysCompletionWhateverTheClientSends() {
+        Habit existing = new Habit("h1", "alice", "Read", null, "#fff", false, "standard", null, null, null, null);
+        when(habitRepository.findByIdAndUserId("h1", "alice")).thenReturn(Optional.of(existing));
+        when(habitRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(habitHistoryRepository.findByUserIdAndHabitIdAndDate("alice", "h1", LocalDate.now()))
+                .thenReturn(Optional.of(new HabitHistory("r1", "alice", "h1", LocalDate.now(), true)));
+        HabitDTO update = dto("standard", "Read more", null, null);
+        update.setId("h1");
+        update.setCompleted(false); // e.g. an older app build that doesn't send it
+
+        assertThat(habitService.updateHabit(update).isCompleted()).isTrue();
     }
 
     @Test
