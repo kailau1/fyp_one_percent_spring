@@ -36,6 +36,10 @@ public class EmbeddingService {
     @Value("${openai.api.key}")
     private String apiKey;
 
+    /** Overridable so local runs and tests can point at a stand-in server instead of OpenAI. */
+    @Value("${openai.base-url:https://api.openai.com}")
+    private String baseUrl = "https://api.openai.com";
+
 
     @PostConstruct
     public void loadThemeEmbeddings() {
@@ -61,7 +65,7 @@ public class EmbeddingService {
         String jsonPayload = mapper.writeValueAsString(payload);
 
         Request request = new Request.Builder()
-                .url("https://api.openai.com/v1/embeddings")
+                .url(baseUrl + "/v1/embeddings")
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .post(RequestBody.create(jsonPayload, MediaType.parse("application/json")))

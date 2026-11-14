@@ -9,6 +9,8 @@ import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.ai.SummaryService;
 import com.example.one_percent.repository.JournalRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class JournalService {
+
+    private static final Logger logger = LoggerFactory.getLogger(JournalService.class);
 
     private final JournalRepository journalRepository;
     private final JournalEntryMapper journalMapper;
@@ -66,17 +70,21 @@ public class JournalService {
         entry.setUserId(user.getId());
         entry.setCreatedAt(LocalDateTime.now());
 
+        // The embedding and summary are extras for the AI features. If OpenAI is unreachable (or the
+        // API key is wrong) the entry is still saved: a journal must never refuse to keep someone's
+        // writing because a third party is down.
         try {
-
             entry.setContentEmbedding(embeddingService.generateEmbedding(entry.getContent()));
+        } catch (IOException | RuntimeException e) {
+            logger.warn("Saving journal entry without an embedding: {}", e.getMessage());
+        }
 
-            if (entry.getLlmResponse() != null && !entry.getLlmResponse().isBlank()) {
-                String llmSummary = summaryService.getFeedbackSummary(entry.getLlmResponse());
-                entry.setLlmSummary(llmSummary);
+        if (entry.getLlmResponse() != null && !entry.getLlmResponse().isBlank()) {
+            try {
+                entry.setLlmSummary(summaryService.getFeedbackSummary(entry.getLlmResponse()));
+            } catch (IOException | RuntimeException e) {
+                logger.warn("Saving journal entry without a feedback summary: {}", e.getMessage());
             }
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to enrich journal entry with summaries or embeddings", e);
         }
 
         return journalMapper.toDto(journalRepository.save(entry));

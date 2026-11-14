@@ -194,6 +194,24 @@ class JournalServiceTest {
     }
 
     @Test
+    void createJournalEntry_stillSavesWhenOpenAiIsUnavailable() throws IOException {
+        when(embeddingService.generateEmbedding(anyString()))
+                .thenThrow(new RuntimeException("OpenAI Embedding API failed: invalid_api_key"));
+        when(summaryService.getFeedbackSummary(anyString())).thenThrow(new IOException("connection refused"));
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        JournalEntryDTO saved = journalService.createJournalEntry(
+                JournalEntryDTO.builder().title("t").content("my writing").llmResponse("earlier feedback").build());
+
+        assertThat(saved.getContent()).isEqualTo("my writing");
+        ArgumentCaptor<JournalEntry> stored = ArgumentCaptor.forClass(JournalEntry.class);
+        verify(journalRepository).save(stored.capture());
+        assertThat(stored.getValue().getContentEmbedding()).isNull();
+        assertThat(stored.getValue().getLlmSummary()).isNull();
+        assertThat(stored.getValue().getLlmResponse()).isEqualTo("earlier feedback");
+    }
+
+    @Test
     void updateJournalEntry_updatesOwnedEntry() {
         JournalEntry mine = entry("j1", ALICE);
         storeInDb(mine);

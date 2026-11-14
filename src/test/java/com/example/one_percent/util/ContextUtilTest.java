@@ -107,6 +107,14 @@ class ContextUtilTest {
     }
 
     @Test
+    void topNMatches_isEmptyWhenTheCurrentEntryHasNoEmbedding() {
+        JournalEntry current = entry(null, null, null); // saved while OpenAI was unavailable
+        JournalEntry past = entry("past", List.of(1.0, 0.0), null);
+
+        assertThat(contextUtil.getTopNMatches(current, List.of(past), 3)).isEmpty();
+    }
+
+    @Test
     void llmContext_listsSummariesOfMostSimilarPastEntries() {
         JournalEntry current = entry(null, List.of(1.0, 0.0), null);
         when(journalRepository.findByUserId("alice")).thenReturn(List.of(

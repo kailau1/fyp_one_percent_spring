@@ -16,14 +16,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OpenAIClient {
 
-    private static final String CHAT_COMPLETION_URL = "https://api.openai.com/v1/chat/completions";
-    private static final String EMBEDDING_URL = "https://api.openai.com/v1/embeddings";
 
     private final OkHttpClient client = new OkHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${openai.api.key}")
     private String apiKey;
+
+    /** Overridable so local runs and tests can point at a stand-in server instead of OpenAI. */
+    @Value("${openai.base-url:https://api.openai.com}")
+    private String baseUrl = "https://api.openai.com";
 
     public String sendChatCompletion(ArrayNode messages, String model, int maxTokens, double temperature) throws IOException {
         ObjectNode payload = mapper.createObjectNode();
@@ -33,7 +35,7 @@ public class OpenAIClient {
         payload.put("temperature", temperature);
 
         Request request = new Request.Builder()
-                .url(CHAT_COMPLETION_URL)
+                .url(baseUrl + "/v1/chat/completions")
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .post(RequestBody.create(mapper.writeValueAsString(payload), MediaType.parse("application/json")))

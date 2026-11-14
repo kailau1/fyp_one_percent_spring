@@ -98,6 +98,9 @@ public class ContextUtil {
     }
 
     public List<JournalEntry> getTopNMatches(JournalEntry currentEntry, List<JournalEntry> candidates, int n) {
+        // Entries saved while OpenAI was unavailable have no embedding to compare with.
+        if (currentEntry.getContentEmbedding() == null) return List.of();
+
         return candidates.stream()
                 .filter(p -> p.getContentEmbedding() != null)
                 .sorted(Comparator.comparingDouble(
