@@ -1,6 +1,7 @@
 package com.example.one_percent.security;
 
 import com.example.one_percent.model.User;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,7 @@ class JwtUtilTest {
     private static JwtUtil jwtUtilWithSecret(String secret) {
         JwtUtil util = new JwtUtil();
         ReflectionTestUtils.setField(util, "secret", secret);
+        ReflectionTestUtils.setField(util, "expirationDays", 7L);
         return util;
     }
 
@@ -46,6 +48,23 @@ class JwtUtilTest {
         assertThat(claims.get("userId")).isEqualTo("u1");
         assertThat(claims.get("firstName")).isEqualTo("Kai");
         assertThat(claims.get("lastName")).isEqualTo("L");
+    }
+
+    @Test
+    void tokenExpiresAfterTheConfiguredNumberOfDays() {
+        String token = jwtUtil.generateToken(user);
+
+        var claims = Jwts.parserBuilder().setSigningKey(SECRET.getBytes()).build().parseClaimsJws(token).getBody();
+        long lifetimeMs = claims.getExpiration().getTime() - claims.getIssuedAt().getTime();
+        assertThat(lifetimeMs).isEqualTo(java.time.Duration.ofDays(7).toMillis());
+    }
+
+    @Test
+    void expiredTokenIsRejected() {
+        ReflectionTestUtils.setField(jwtUtil, "expirationDays", -1L); // already expired when issued
+        String expired = jwtUtil.generateToken(user);
+
+        assertThatThrownBy(() -> jwtUtil.extractEmail(expired)).isInstanceOf(ExpiredJwtException.class);
     }
 
     @Test
