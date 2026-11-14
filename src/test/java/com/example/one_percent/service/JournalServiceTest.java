@@ -263,6 +263,20 @@ class JournalServiceTest {
     }
 
     @Test
+    void updateJournalEntry_doesntAskOpenAiToEmbedEmptyText() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("old text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("t").content("  ").build());
+
+        assertThat(mine.getContentEmbedding()).isNull();
+        verify(embeddingService, never()).generateEmbedding(any());
+    }
+
+    @Test
     void updateJournalEntry_savesTheEditEvenWhenEmbeddingFails() throws IOException {
         JournalEntry mine = entry("j1", ALICE);
         mine.setContent("old text");

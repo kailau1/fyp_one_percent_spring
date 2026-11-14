@@ -90,7 +90,7 @@ class EmbeddingServiceTest {
                 "gratitude", List.of(0.0, 0.0, 1.0, 0.0),
                 "burnout", List.of(0.0, 0.0, 0.0, 1.0)));
 
-        when(journalRepository.findByUserId("alice")).thenReturn(List.of(
+        when(journalRepository.findForThemes("alice")).thenReturn(List.of(
                 entryWithEmbedding(List.of(1.0, 0.6, 0.3, 0.0)),  // procrastination, self-doubt, gratitude
                 entryWithEmbedding(List.of(0.9, 0.5, 0.0, 0.2)),  // procrastination, self-doubt, burnout
                 entryWithEmbedding(List.of(0.8, 0.4, 0.2, 0.0)),  // procrastination, self-doubt, gratitude
@@ -122,9 +122,17 @@ class EmbeddingServiceTest {
     }
 
     @Test
+    void consistentThemes_dropsVectorsOfTheOddLengthOut() {
+        Map<String, List<Double>> kept = EmbeddingService.consistentThemes(Map.of(
+                "a", List.of(1.0, 0.0), "b", List.of(0.0, 1.0), "c", List.of(1.0, 1.0), "odd", List.of(1.0, 0.0, 0.0)));
+
+        assertThat(kept).containsOnlyKeys("a", "b", "c");
+    }
+
+    @Test
     void getFrequentThemes_isEmptyWhenUserHasNoEmbeddedEntries() {
         themes().put("procrastination", List.of(1.0));
-        when(journalRepository.findByUserId("alice")).thenReturn(new ArrayList<>(List.of(entryWithEmbedding(null))));
+        when(journalRepository.findForThemes("alice")).thenReturn(new ArrayList<>(List.of(entryWithEmbedding(null))));
 
         assertThat(embeddingService.getFrequentThemes("alice")).isEmpty();
     }

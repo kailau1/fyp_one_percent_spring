@@ -12,9 +12,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -24,13 +26,22 @@ class InsightsServiceTest {
 
     @Mock
     private JournalRepository journalRepository;
-    @Mock
-    private EmbeddingService embeddingService;
-
     private InsightsService insightsService;
 
+    // one-hot theme vectors, so each entry's three closest themes are easy to read off its embedding
+    private static final List<Double> A = List.of(3.0, 2.0, 1.0, 0.0); // burnout, anxiety, discipline
+    private static final List<Double> B = List.of(0.0, 2.0, 1.0, 3.0); // gratitude, anxiety, discipline
+
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
+        // the real theme matching, so this tests what the page will actually show
+        EmbeddingService embeddingService = new EmbeddingService(journalRepository);
+        ((Map<String, List<Double>>) ReflectionTestUtils.getField(embeddingService, "themeEmbeddings")).putAll(Map.of(
+                "burnout", List.of(1.0, 0.0, 0.0, 0.0),
+                "anxiety", List.of(0.0, 1.0, 0.0, 0.0),
+                "discipline", List.of(0.0, 0.0, 1.0, 0.0),
+                "gratitude", List.of(0.0, 0.0, 0.0, 1.0)));
         insightsService = new InsightsService(journalRepository, embeddingService);
         TestAuth.loginAs("alice");
     }
@@ -51,14 +62,9 @@ class InsightsServiceTest {
 
     @Test
     void countsThemesAcrossTheUsersEntriesMostCommonFirst() {
-        List<Double> a = List.of(1.0), b = List.of(2.0), c = List.of(3.0);
-        // newest first, as the repository returns them
+        // newest first, as the repository returns them; e1 was embedded by another model, e0 not at all
         when(journalRepository.findForThemes("alice")).thenReturn(List.of(
-                entry("e5", a), entry("e4", b), entry("e3", a), entry("e2", a), entry("e1", c), entry("e0", null)));
-        when(embeddingService.closestThemes(a, 3)).thenReturn(List.of("burnout", "anxiety", "discipline"));
-        when(embeddingService.closestThemes(b, 3)).thenReturn(List.of("gratitude", "anxiety", "confidence"));
-        when(embeddingService.closestThemes(c, 3)).thenReturn(List.of()); // couldn't be analysed
-        when(embeddingService.closestThemes(null, 3)).thenReturn(List.of());
+                entry("e5", A), entry("e4", B), entry("e3", A), entry("e2", A), entry("e1", List.of(1.0, 0.0)), entry("e0", null)));
 
         ThemeInsightsDTO insights = insightsService.getThemeInsights();
 
@@ -67,19 +73,17 @@ class InsightsServiceTest {
         assertThat(insights.getThemes()).extracting(ThemeInsightsDTO.Theme::getName, ThemeInsightsDTO.Theme::getEntryCount)
                 .containsExactly(
                         tuple("anxiety", 4),
+                        tuple("discipline", 4),
                         tuple("burnout", 3),
-                        tuple("discipline", 3),
-                        tuple("confidence", 1),
                         tuple("gratitude", 1));
     }
 
     @Test
     void linksEachThemeToItsThreeNewestEntries() {
-        List<Double> a = List.of(1.0);
-        when(journalRepository.findForThemes("alice")).thenReturn(List.of(entry("e4", a), entry("e3", a), entry("e2", a), entry("e1", a)));
-        when(embeddingService.closestThemes(a, 3)).thenReturn(List.of("burnout"));
+        when(journalRepository.findForThemes("alice")).thenReturn(List.of(entry("e4", A), entry("e3", A), entry("e2", A), entry("e1", A)));
 
-        ThemeInsightsDTO.Theme burnout = insightsService.getThemeInsights().getThemes().get(0);
+        ThemeInsightsDTO.Theme burnout = insightsService.getThemeInsights().getThemes().stream()
+                .filter(theme -> theme.getName().equals("burnout")).findFirst().orElseThrow();
 
         assertThat(burnout.getEntryCount()).isEqualTo(4);
         assertThat(burnout.getRecentEntries()).extracting(ThemeInsightsDTO.EntryRef::getId).containsExactly("e4", "e3", "e2");
