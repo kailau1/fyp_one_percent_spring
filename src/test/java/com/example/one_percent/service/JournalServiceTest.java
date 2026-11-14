@@ -1,18 +1,19 @@
 package com.example.one_percent.service;
 
 import com.example.one_percent.dto.JournalEntryDTO;
+import com.example.one_percent.dto.PageDTO;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.JournalEntryMapper;
 import com.example.one_percent.model.JournalEntry;
+import com.example.one_percent.model.User;
 import com.example.one_percent.repository.JournalRepository;
 import com.example.one_percent.service.ai.SummaryService;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.journal.JournalService;
 import com.example.one_percent.support.TestAuth;
-import org.junit.jupiter.api.AfterEach;
 import com.example.one_percent.util.UserClock;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import java.time.Clock;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,8 +21,14 @@ import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -249,5 +256,60 @@ class JournalServiceTest {
         assertThat(draft.getUserId()).isEqualTo(ALICE);
         assertThat(draft.getContentEmbedding()).containsExactly(0.5);
         verify(journalRepository, never()).save(any());
+    }
+
+    @Nested
+    class SearchAndDays {
+
+        @Test
+        void searchReturnsOnePageOfTheUsersEntries() {
+            JournalEntry entry = new JournalEntry();
+            entry.setId("j1");
+            entry.setTitle("Morning");
+            when(journalRepository.searchByUser(ALICE, "walk", PageRequest.of(1, 2)))
+                    .thenReturn(new PageImpl<>(List.of(entry), PageRequest.of(1, 2), 5));
+
+            PageDTO<JournalEntryDTO> page = journalService.searchJournals("walk", 1, 2);
+
+            assertThat(page.getItems()).extracting(JournalEntryDTO::getId).containsExactly("j1");
+            assertThat(page.getPage()).isEqualTo(1);
+            assertThat(page.getTotalItems()).isEqualTo(5);
+            assertThat(page.getTotalPages()).isEqualTo(3);
+            assertThat(page.isHasNext()).isTrue();
+        }
+
+        @Test
+        void searchRejectsBadPaging() {
+            assertThatThrownBy(() -> journalService.searchJournals(null, -1, 20)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.searchJournals(null, 0, 0)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.searchJournals(null, 0, JournalService.MAX_PAGE_SIZE + 1))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(journalRepository, never()).searchByUser(any(), any(), any());
+        }
+
+        @Test
+        void daysAreCountedInTheUsersTimeZone() {
+            // 03:00 UTC on 15 Nov is still the 14th in New York; 23:30 UTC on the 15th is the 15th there
+            User alice = TestAuth.loginAs(ALICE);
+            alice.setTimeZone("America/New_York");
+            JournalService service = new JournalService(journalRepository, mapper, summaryService, embeddingService,
+                    new UserClock(Clock.fixed(Instant.parse("2026-11-20T12:00:00Z"), ZoneOffset.UTC)));
+            Instant from = Instant.parse("2026-11-14T05:00:00Z"); // midnight on the 14th in New York
+            Instant to = Instant.parse("2026-11-16T05:00:00Z");   // midnight starting the 16th
+            when(journalRepository.findCreatedAtBetween(ALICE, from, to)).thenReturn(List.of(
+                    Instant.parse("2026-11-15T23:30:00Z"),
+                    Instant.parse("2026-11-15T03:00:00Z"),
+                    Instant.parse("2026-11-14T15:00:00Z")));
+
+            List<LocalDate> days = service.getDaysWithEntries(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15));
+
+            assertThat(days).containsExactly(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15));
+        }
+
+        @Test
+        void daysRejectABackwardsRange() {
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 1, 1)))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 }

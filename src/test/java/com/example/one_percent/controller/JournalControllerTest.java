@@ -3,6 +3,7 @@ package com.example.one_percent.controller;
 import com.example.one_percent.config.WebConfig;
 import com.example.one_percent.controller.core.JournalController;
 import com.example.one_percent.dto.JournalEntryDTO;
+import com.example.one_percent.dto.PageDTO;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.model.User;
 import com.example.one_percent.repository.UserRepository;
@@ -55,6 +56,56 @@ class JournalControllerTest {
     void rejectsRequestsWithoutAToken() throws Exception {
         mvc.perform(get("/api/journals/entry/j1")).andExpect(status().isUnauthorized());
         verifyNoInteractions(journalService);
+    }
+
+    @Test
+    void searchReturnsAPageWithDefaults() throws Exception {
+        when(journalService.searchJournals(null, 0, 20)).thenReturn(new PageDTO<>(
+                java.util.List.of(JournalEntryDTO.builder().id("j1").title("Mine").build()), 0, 20, 1, 1, false));
+
+        mvc.perform(get("/api/journals").header("Authorization", TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value("j1"))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void searchPassesTheQueryAndPaging() throws Exception {
+        when(journalService.searchJournals("walk", 2, 5)).thenReturn(new PageDTO<>(java.util.List.of(), 2, 5, 0, 0, false));
+
+        mvc.perform(get("/api/journals").param("q", "walk").param("page", "2").param("size", "5").header("Authorization", TOKEN))
+                .andExpect(status().isOk());
+        verify(journalService).searchJournals("walk", 2, 5);
+    }
+
+    @Test
+    void badPagingIs400() throws Exception {
+        when(journalService.searchJournals(null, 0, 500)).thenThrow(new IllegalArgumentException("'size' must be between 1 and 100."));
+
+        mvc.perform(get("/api/journals").param("size", "500").header("Authorization", TOKEN))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/journals").param("page", "abc").header("Authorization", TOKEN))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void searchNeedsAToken() throws Exception {
+        mvc.perform(get("/api/journals")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/journals/days")).andExpect(status().isUnauthorized());
+        verifyNoInteractions(journalService);
+    }
+
+    @Test
+    void daysAreCalendarDates() throws Exception {
+        when(journalService.getDaysWithEntries(java.time.LocalDate.of(2026, 11, 1), null))
+                .thenReturn(java.util.List.of(java.time.LocalDate.of(2026, 11, 3)));
+
+        mvc.perform(get("/api/journals/days").param("from", "2026-11-01").header("Authorization", TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("2026-11-03"));
+        mvc.perform(get("/api/journals/days").param("from", "yesterday").header("Authorization", TOKEN))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

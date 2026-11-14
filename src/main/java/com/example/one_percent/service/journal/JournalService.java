@@ -1,6 +1,7 @@
 package com.example.one_percent.service.journal;
 
 import com.example.one_percent.dto.JournalEntryDTO;
+import com.example.one_percent.dto.PageDTO;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.JournalEntryMapper;
 import com.example.one_percent.model.JournalEntry;
@@ -12,11 +13,14 @@ import com.example.one_percent.util.UserClock;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,6 +56,46 @@ public class JournalService {
         User user = getAuthenticatedUser();
         return journalRepository.findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found: " + id));
+    }
+
+    /** The most entries one page may hold. */
+    public static final int MAX_PAGE_SIZE = 100;
+
+    /**
+     * One page of the user's entries, newest first, optionally only those whose title or text
+     * contains `query` (case-insensitive).
+     */
+    public PageDTO<JournalEntryDTO> searchJournals(String query, int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("'page' can't be negative.");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("'size' must be between 1 and " + MAX_PAGE_SIZE + ".");
+        }
+        User user = getAuthenticatedUser();
+        return PageDTO.of(journalRepository.searchByUser(user.getId(), query, PageRequest.of(page, size)), journalMapper::toDto);
+    }
+
+    /**
+     * The days (in the user's time zone) on which they wrote at least one entry, between `from`
+     * and `to` inclusive, oldest first. Defaults to the last year. Lets a calendar or streak view
+     * show writing activity without downloading every entry.
+     */
+    public List<LocalDate> getDaysWithEntries(LocalDate from, LocalDate to) {
+        User user = getAuthenticatedUser();
+        ZoneId zone = userClock.zoneOf(user);
+        LocalDate end = to != null ? to : userClock.today(user);
+        LocalDate start = from != null ? from : end.minusDays(365);
+        if (start.isAfter(end)) {
+            throw new IllegalArgumentException("'from' must not be after 'to'.");
+        }
+        return journalRepository
+                .findCreatedAtBetween(user.getId(), start.atStartOfDay(zone).toInstant(), end.plusDays(1).atStartOfDay(zone).toInstant())
+                .stream()
+                .map(instant -> LocalDate.ofInstant(instant, zone))
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     public List<JournalEntryDTO> getJournalsByAuthenticatedUser() {
