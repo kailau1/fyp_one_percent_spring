@@ -2,6 +2,7 @@ package com.example.one_percent.security;
 
 import com.example.one_percent.model.User;
 import com.example.one_percent.repository.UserRepository;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,7 +34,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            String email = jwtUtil.extractEmail(token);
+            String email = null;
+            try {
+                email = jwtUtil.extractEmail(token);
+            } catch (JwtException | IllegalArgumentException e) {
+                // Malformed, tampered or expired token: carry on unauthenticated so the request
+                // gets a clean 401 from the security chain instead of a 500 from this filter.
+                logger.debug("Rejected JWT: " + e.getMessage());
+            }
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 User user = userRepository.findByEmail(email);

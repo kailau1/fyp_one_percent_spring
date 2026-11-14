@@ -53,7 +53,7 @@ class JournalControllerTest {
 
     @Test
     void rejectsRequestsWithoutAToken() throws Exception {
-        mvc.perform(get("/api/journals/entry/j1")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/journals/entry/j1")).andExpect(status().isUnauthorized());
         verifyNoInteractions(journalService);
     }
 
@@ -93,11 +93,24 @@ class JournalControllerTest {
     }
 
     @Test
+    void malformedOrExpiredTokenIs401NotA500() throws Exception {
+        when(jwtUtil.extractEmail("garbage")).thenThrow(new io.jsonwebtoken.MalformedJwtException("bad token"));
+        when(jwtUtil.extractEmail("expired")).thenThrow(
+                new io.jsonwebtoken.ExpiredJwtException(null, null, "JWT expired"));
+
+        mvc.perform(get("/api/journals/me").header("Authorization", "Bearer garbage"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/journals/me").header("Authorization", "Bearer expired"))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(journalService);
+    }
+
+    @Test
     void rejectsTokenForUnknownUser() throws Exception {
         when(jwtUtil.extractEmail("ghost-token")).thenReturn("ghost@example.com");
         when(userRepository.findByEmail("ghost@example.com")).thenReturn(null);
 
         mvc.perform(get("/api/journals/me").header("Authorization", "Bearer ghost-token"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

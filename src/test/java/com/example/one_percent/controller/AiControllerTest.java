@@ -102,7 +102,7 @@ class AiControllerTest {
 
     @Test
     void tipRequiresAuthentication() throws Exception {
-        mvc.perform(get("/api/ai/tip")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/ai/tip")).andExpect(status().isUnauthorized());
         verifyNoInteractions(aiService);
     }
 }
