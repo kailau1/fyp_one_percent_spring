@@ -34,6 +34,12 @@ public class UserService {
     }
 
     public UserDTO createUser(UserRegistrationDTO registrationDTO) {
+        // A second account with the same email would make findByEmail() match two documents,
+        // which breaks login for *both* accounts.
+        if (userRepository.findByEmail(registrationDTO.getEmail()) != null) {
+            throw new IllegalArgumentException("An account with this email already exists.");
+        }
+
         User user = new User();
         user.setFirstName(registrationDTO.getFirstName());
         user.setLastName(registrationDTO.getLastName());
