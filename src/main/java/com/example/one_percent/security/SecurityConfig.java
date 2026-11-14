@@ -26,6 +26,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users/login", "/api/users/register").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**").permitAll()
+                        // Spring forwards unknown routes and unhandled errors to /error. If that needs a
+                        // login, a logged-in user's 404 turns into a 401 and clients think the session expired.
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/journals/**").authenticated()
                         .requestMatchers("/api/habits/**").authenticated()
                         .anyRequest().authenticated()
