@@ -81,9 +81,10 @@ public class HabitHistoryService {
 
     public HabitHistory markHabitCompleted(String habitId) {
         User user = requireOwnerOf(habitId);
+        LocalDate today = userClock.today(user); // once, so a tick at midnight can't straddle two days
         HabitHistory history = habitHistoryRepository
-                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, userClock.today(user))
-                .orElse(new HabitHistory(null, user.getId(), habitId, userClock.today(user), false));
+                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, today)
+                .orElse(new HabitHistory(null, user.getId(), habitId, today, false));
 
         history.setCompleted(true);
         return habitHistoryRepository.save(history);
@@ -91,9 +92,10 @@ public class HabitHistoryService {
 
     public HabitHistory unmarkHabitCompleted(String habitId) {
         User user = requireOwnerOf(habitId);
+        LocalDate today = userClock.today(user); // once, so a tick at midnight can't straddle two days
         HabitHistory history = habitHistoryRepository
-                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, userClock.today(user))
-                .orElse(new HabitHistory(null, user.getId(), habitId, userClock.today(user), false));
+                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, today)
+                .orElse(new HabitHistory(null, user.getId(), habitId, today, false));
 
         history.setCompleted(false);
         return habitHistoryRepository.save(history);

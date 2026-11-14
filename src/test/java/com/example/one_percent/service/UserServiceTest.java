@@ -112,14 +112,12 @@ class UserServiceTest {
     @Test
     void updateTimeZone_savesItOnTheLoggedInUser() {
         TestAuth.loginAs("alice");
-        when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         try {
             UserDTO dto = userService.updateTimeZone(" America/New_York ");
 
-            ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
-            verify(userRepository).save(saved.capture());
-            assertThat(saved.getValue().getId()).isEqualTo("alice");
-            assertThat(saved.getValue().getTimeZone()).isEqualTo("America/New_York");
+            // only the zone is written: saving the whole user could overwrite other changes
+            verify(userRepository).updateTimeZone("alice", "America/New_York");
+            verify(userRepository, never()).save(any());
             assertThat(dto.getTimeZone()).isEqualTo("America/New_York");
         } finally {
             TestAuth.clear();
@@ -134,7 +132,9 @@ class UserServiceTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> userService.updateTimeZone(null))
                     .isInstanceOf(IllegalArgumentException.class);
-            verify(userRepository, never()).save(any());
+            assertThatThrownBy(() -> userService.updateTimeZone("-04:00"))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(userRepository, never()).updateTimeZone(any(), any());
         } finally {
             TestAuth.clear();
         }

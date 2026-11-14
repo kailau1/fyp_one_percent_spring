@@ -33,7 +33,7 @@ class ContextUtilTest {
 
     @BeforeEach
     void setUp() {
-        contextUtil = new ContextUtil(habitRepository, journalRepository, embeddingService);
+        contextUtil = new ContextUtil(habitRepository, journalRepository, embeddingService, java.time.Clock.systemUTC());
         // use the real maths so similarity ranking is meaningful
         lenient().when(embeddingService.cosineSimilarity(any(), any())).thenCallRealMethod();
     }

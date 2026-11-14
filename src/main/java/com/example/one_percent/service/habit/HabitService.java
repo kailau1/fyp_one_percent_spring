@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,7 +45,10 @@ public class HabitService {
 
     /** Fetches a habit only if it belongs to the authenticated user; otherwise 404 (see JournalService). */
     private Habit getOwnedHabit(String id) {
-        User user = getAuthenticatedUser();
+        return getOwnedHabit(id, getAuthenticatedUser());
+    }
+
+    private Habit getOwnedHabit(String id, User user) {
         return habitRepository.findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Habit not found: " + id));
     }
@@ -55,8 +59,9 @@ public class HabitService {
         Habit habit = habitMapper.toEntity(habitDTO);
         habit.setId(null); // never let the client choose (or overwrite) an ID on create
         habit.setUserId(user.getId());
-        habit.setCreatedAt(userClock.now());
-        habit.setLastUpdated(userClock.now());
+        Instant now = userClock.now();
+        habit.setCreatedAt(now);
+        habit.setLastUpdated(now);
 
         if ("trigger-action".equalsIgnoreCase(habit.getHabitType())) {
             if (habit.getTrigger() == null || habit.getAction() == null) {
@@ -96,7 +101,8 @@ public class HabitService {
     }
 
     public HabitDTO updateHabit(HabitDTO habitDTO) {
-        Habit habitToUpdate = getOwnedHabit(habitDTO.getId());
+        User user = getAuthenticatedUser();
+        Habit habitToUpdate = getOwnedHabit(habitDTO.getId(), user);
         habitToUpdate.setHabitName(habitDTO.getHabitName());
         habitToUpdate.setDescription(habitDTO.getDescription());
         habitToUpdate.setColour(habitDTO.getColour());
@@ -107,7 +113,7 @@ public class HabitService {
 
         // Editing a habit never changes whether it's done today (that used to un-tick it).
         boolean completedToday = habitHistoryRepository
-                .findByUserIdAndHabitIdAndDate(habitToUpdate.getUserId(), habitToUpdate.getId(), userClock.today(getAuthenticatedUser()))
+                .findByUserIdAndHabitIdAndDate(habitToUpdate.getUserId(), habitToUpdate.getId(), userClock.today(user))
                 .map(HabitHistory::isCompleted)
                 .orElse(false);
 

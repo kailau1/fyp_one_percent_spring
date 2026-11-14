@@ -44,6 +44,10 @@ class UserClockTest {
         assertThat(UserClock.isValidZone("Europe/London")).isTrue();
         assertThat(UserClock.isValidZone("UTC")).isTrue();
         assertThat(UserClock.isValidZone("Mars/Olympus")).isFalse();
+        // fixed offsets ignore daylight saving, so they'd put the day boundary an hour out half the year
+        assertThat(UserClock.isValidZone("-04:00")).isFalse();
+        assertThat(UserClock.isValidZone("GMT+1")).isFalse();
+        assertThat(UserClock.isValidZone("Z")).isFalse();
         assertThat(UserClock.isValidZone("")).isFalse();
         assertThat(UserClock.isValidZone(null)).isFalse();
     }

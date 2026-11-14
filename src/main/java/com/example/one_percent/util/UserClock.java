@@ -4,7 +4,6 @@ import com.example.one_percent.model.User;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
-import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -24,15 +23,13 @@ public class UserClock {
         this.clock = clock;
     }
 
-    /** True if the text is a time zone ID Java understands, such as "Europe/London". */
+    /**
+     * True for an IANA region ID such as "Europe/London" (or "UTC"). Fixed offsets like "-04:00"
+     * or "GMT+1" are refused: they don't follow daylight saving, so a day would start an hour off
+     * for half the year.
+     */
     public static boolean isValidZone(String zoneId) {
-        if (zoneId == null || zoneId.isBlank()) return false;
-        try {
-            ZoneId.of(zoneId);
-            return true;
-        } catch (DateTimeException e) {
-            return false;
-        }
+        return zoneId != null && ZoneId.getAvailableZoneIds().contains(zoneId);
     }
 
     /**

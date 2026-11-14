@@ -48,8 +48,9 @@ public class UserService {
             throw new IllegalArgumentException("That isn't a time zone we recognise, e.g. \"Europe/London\".");
         }
         User user = getAuthenticatedUser();
+        userRepository.updateTimeZone(user.getId(), zone);
         user.setTimeZone(zone);
-        return userMapper.toDto(userRepository.save(user));
+        return userMapper.toDto(user);
     }
 
     public List<UserDTO> getAllUsers() {
