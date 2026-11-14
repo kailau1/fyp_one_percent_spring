@@ -90,6 +90,15 @@ class JournalControllerTest {
     }
 
     @Test
+    void malformedJsonIs400NotA500() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/journals")
+                        .header("Authorization", TOKEN)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{not json"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(journalService);
+    }
+
+    @Test
     void searchNeedsAToken() throws Exception {
         mvc.perform(get("/api/journals")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/journals/days")).andExpect(status().isUnauthorized());

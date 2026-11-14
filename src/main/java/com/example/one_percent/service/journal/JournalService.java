@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,6 +61,10 @@ public class JournalService {
 
     /** The most entries one page may hold. */
     public static final int MAX_PAGE_SIZE = 100;
+    /** Longest search text accepted: plenty for a phrase, and keeps a regex scan cheap. */
+    public static final int MAX_QUERY_LENGTH = 200;
+    /** Widest range GET /api/journals/days answers in one request (two years). */
+    public static final int MAX_DAYS_RANGE = 731;
 
     /**
      * One page of the user's entries, newest first, optionally only those whose title or text
@@ -71,6 +76,9 @@ public class JournalService {
         }
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("'size' must be between 1 and " + MAX_PAGE_SIZE + ".");
+        }
+        if (query != null && query.length() > MAX_QUERY_LENGTH) {
+            throw new IllegalArgumentException("Search text can be at most " + MAX_QUERY_LENGTH + " characters.");
         }
         User user = getAuthenticatedUser();
         return PageDTO.of(journalRepository.searchByUser(user.getId(), query, PageRequest.of(page, size)), journalMapper::toDto);
@@ -84,10 +92,17 @@ public class JournalService {
     public List<LocalDate> getDaysWithEntries(LocalDate from, LocalDate to) {
         User user = getAuthenticatedUser();
         ZoneId zone = userClock.zoneOf(user);
+        if ((from != null && (from.getYear() < 1900 || from.getYear() > 9999))
+                || (to != null && (to.getYear() < 1900 || to.getYear() > 9999))) {
+            throw new IllegalArgumentException("Dates must be between the years 1900 and 9999.");
+        }
         LocalDate end = to != null ? to : userClock.today(user);
-        LocalDate start = from != null ? from : end.minusDays(365);
+        LocalDate start = from != null ? from : end.minusYears(1);
         if (start.isAfter(end)) {
             throw new IllegalArgumentException("'from' must not be after 'to'.");
+        }
+        if (ChronoUnit.DAYS.between(start, end) > MAX_DAYS_RANGE) {
+            throw new IllegalArgumentException("Ask for at most " + MAX_DAYS_RANGE + " days at a time.");
         }
         return journalRepository
                 .findCreatedAtBetween(user.getId(), start.atStartOfDay(zone).toInstant(), end.plusDays(1).atStartOfDay(zone).toInstant())

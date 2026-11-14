@@ -3,12 +3,12 @@ package com.example.one_percent.repository;
 import com.example.one_percent.model.JournalEntry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -37,14 +37,15 @@ public class JournalRepositoryImpl implements JournalRepositoryCustom {
                     Criteria.where("title").regex(pattern, "i"),
                     Criteria.where("content").regex(pattern, "i"));
         }
-        long total = mongoTemplate.count(Query.query(criteria), JournalEntry.class);
-
         Query page = Query.query(criteria)
                 // newest first; the id breaks ties so paging never skips or repeats an entry
                 .with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("_id")))
                 .with(pageable);
         page.fields().exclude("contentEmbedding");
-        return new PageImpl<>(mongoTemplate.find(page, JournalEntry.class), pageable, total);
+        List<JournalEntry> content = mongoTemplate.find(page, JournalEntry.class);
+        // only counts when it can't be worked out from the page itself (e.g. a short first page)
+        Query count = Query.query(criteria);
+        return PageableExecutionUtils.getPage(content, pageable, () -> mongoTemplate.count(count, JournalEntry.class));
     }
 
     @Override

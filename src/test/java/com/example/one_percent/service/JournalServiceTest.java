@@ -284,6 +284,8 @@ class JournalServiceTest {
             assertThatThrownBy(() -> journalService.searchJournals(null, 0, 0)).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> journalService.searchJournals(null, 0, JournalService.MAX_PAGE_SIZE + 1))
                     .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.searchJournals("x".repeat(JournalService.MAX_QUERY_LENGTH + 1), 0, 20))
+                    .isInstanceOf(IllegalArgumentException.class);
             verify(journalRepository, never()).searchByUser(any(), any(), any());
         }
 
@@ -304,6 +306,31 @@ class JournalServiceTest {
             List<LocalDate> days = service.getDaysWithEntries(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15));
 
             assertThat(days).containsExactly(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15));
+        }
+
+        @Test
+        void daysRefuseRangesWiderThanTwoYearsOrAbsurdDates() {
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(LocalDate.of(2020, 1, 1), LocalDate.of(2026, 1, 1)))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(null, LocalDate.MAX))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(LocalDate.MIN, LocalDate.of(2026, 1, 1)))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(journalRepository, never()).findCreatedAtBetween(any(), any(), any());
+        }
+
+        @Test
+        void daysDefaultToTheLastYear() {
+            User alice = TestAuth.loginAs(ALICE);
+            alice.setTimeZone("UTC");
+            JournalService service = new JournalService(journalRepository, mapper, summaryService, embeddingService,
+                    new UserClock(Clock.fixed(Instant.parse("2026-11-14T12:00:00Z"), ZoneOffset.UTC)));
+            when(journalRepository.findCreatedAtBetween(any(), any(), any())).thenReturn(List.of());
+
+            service.getDaysWithEntries(null, null);
+
+            verify(journalRepository).findCreatedAtBetween(ALICE,
+                    Instant.parse("2025-11-14T00:00:00Z"), Instant.parse("2026-11-15T00:00:00Z"));
         }
 
         @Test
