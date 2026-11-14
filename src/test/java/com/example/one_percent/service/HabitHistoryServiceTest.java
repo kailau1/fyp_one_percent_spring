@@ -1,7 +1,9 @@
 package com.example.one_percent.service;
 
 import com.example.one_percent.model.HabitHistory;
+import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.repository.HabitHistoryRepository;
+import com.example.one_percent.repository.HabitRepository;
 import com.example.one_percent.service.habit.HabitHistoryService;
 import com.example.one_percent.support.TestAuth;
 import org.junit.jupiter.api.AfterEach;
@@ -13,17 +15,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class HabitHistoryServiceTest {
 
     @Mock
     private HabitHistoryRepository repository;
+    @Mock
+    private HabitRepository habitRepository;
 
     @InjectMocks
     private HabitHistoryService service;
@@ -31,7 +37,8 @@ class HabitHistoryServiceTest {
     @BeforeEach
     void setUp() {
         TestAuth.loginAs("alice");
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(habitRepository.existsByIdAndUserId("h1", "alice")).thenReturn(true);
+        lenient().when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @AfterEach
@@ -61,6 +68,25 @@ class HabitHistoryServiceTest {
 
         assertThat(saved.getId()).isEqualTo("rec1");
         assertThat(saved.isCompleted()).isTrue();
+    }
+
+    @Test
+    void refusesToReadOrWriteHistoryForAnotherUsersHabit() {
+        when(habitRepository.existsByIdAndUserId("bobs", "alice")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getHabitHistory("bobs")).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> service.markHabitCompleted("bobs")).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> service.unmarkHabitCompleted("bobs")).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> service.getTodayHabitStatus("bobs")).isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void getHabitHistory_onlyReturnsTheCurrentUsersRecords() {
+        HabitHistory record = new HabitHistory("rec1", "alice", "h1", LocalDate.now(), true);
+        when(repository.findByUserIdAndHabitIdOrderByDateDesc("alice", "h1")).thenReturn(List.of(record));
+
+        assertThat(service.getHabitHistory("h1")).containsExactly(record);
     }
 
     @Test

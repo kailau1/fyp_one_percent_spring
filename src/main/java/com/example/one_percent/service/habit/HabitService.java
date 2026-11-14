@@ -1,6 +1,7 @@
 package com.example.one_percent.service.habit;
 
 import com.example.one_percent.dto.HabitDTO;
+import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.HabitMapper;
 import com.example.one_percent.model.Habit;
 import com.example.one_percent.model.User;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,10 +37,18 @@ public class HabitService {
         }
     }
 
+    /** Fetches a habit only if it belongs to the authenticated user; otherwise 404 (see JournalService). */
+    private Habit getOwnedHabit(String id) {
+        User user = getAuthenticatedUser();
+        return habitRepository.findByIdAndUserId(id, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Habit not found: " + id));
+    }
+
     public HabitDTO createHabit(HabitDTO habitDTO) {
         User user = getAuthenticatedUser();
 
         Habit habit = habitMapper.toEntity(habitDTO);
+        habit.setId(null); // never let the client choose (or overwrite) an ID on create
         habit.setUserId(user.getId());
         habit.setCreatedAt(LocalDateTime.now());
         habit.setLastUpdated(LocalDateTime.now());
@@ -64,29 +72,21 @@ public class HabitService {
     }
 
     public HabitDTO updateHabit(HabitDTO habitDTO) {
-        Optional<Habit> existingHabit = habitRepository.findById(habitDTO.getId());
-        if (existingHabit.isPresent()) {
-            Habit habitToUpdate = existingHabit.get();
-            habitToUpdate.setHabitName(habitDTO.getHabitName());
-            habitToUpdate.setDescription(habitDTO.getDescription());
-            habitToUpdate.setColour(habitDTO.getColour());
-            habitToUpdate.setCompleted(habitDTO.isCompleted());
-            habitToUpdate.setHabitType(habitDTO.getHabitType());
-            habitToUpdate.setTrigger(habitDTO.getTrigger());
-            habitToUpdate.setAction(habitDTO.getAction());
-            habitToUpdate.setLastUpdated(LocalDateTime.now());
+        Habit habitToUpdate = getOwnedHabit(habitDTO.getId());
+        habitToUpdate.setHabitName(habitDTO.getHabitName());
+        habitToUpdate.setDescription(habitDTO.getDescription());
+        habitToUpdate.setColour(habitDTO.getColour());
+        habitToUpdate.setCompleted(habitDTO.isCompleted());
+        habitToUpdate.setHabitType(habitDTO.getHabitType());
+        habitToUpdate.setTrigger(habitDTO.getTrigger());
+        habitToUpdate.setAction(habitDTO.getAction());
+        habitToUpdate.setLastUpdated(LocalDateTime.now());
 
-            return habitMapper.toDto(habitRepository.save(habitToUpdate));
-        }
-        throw new IllegalArgumentException("Habit not found with ID: " + habitDTO.getId());
+        return habitMapper.toDto(habitRepository.save(habitToUpdate));
     }
 
     public void deleteHabit(String id) {
-        if (habitRepository.existsById(id)) {
-            habitRepository.deleteById(id);
-        } else {
-            throw new IllegalArgumentException("Habit not found with ID: " + id);
-        }
+        habitRepository.delete(getOwnedHabit(id));
     }
 
 

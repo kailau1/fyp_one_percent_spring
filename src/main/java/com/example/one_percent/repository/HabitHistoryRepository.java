@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface HabitHistoryRepository extends MongoRepository<HabitHistory, String> {
     Optional<HabitHistory> findByUserIdAndHabitIdAndDate(String userId, String habitId, LocalDate date);
     List<HabitHistory> findByUserIdAndDate(String userId, LocalDate date);
-    List<HabitHistory> findByHabitIdOrderByDateDesc(String habitId);
+    List<HabitHistory> findByUserIdAndHabitIdOrderByDateDesc(String userId, String habitId);
 }

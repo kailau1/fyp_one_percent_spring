@@ -48,10 +48,4 @@ public class HabitHistoryController {
         logger.info("Unmarking habit as completed for habitId: {}", habitId);
         return ResponseEntity.ok(habitHistoryService.unmarkHabitCompleted(habitId));
     }
-    @PostMapping("/add/bulk")
-    public ResponseEntity<List<HabitHistory>> addBulkHabitHistory(@RequestBody List<HabitHistory> habitHistories) {
-        logger.info("Bulk adding {} habit history records", habitHistories.size());
-        List<HabitHistory> savedHistories = habitHistoryService.addBulkHabitHistory(habitHistories);
-        return ResponseEntity.ok(savedHistories);
-    }
 }

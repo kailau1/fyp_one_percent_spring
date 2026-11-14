@@ -1,6 +1,7 @@
 package com.example.one_percent.service;
 
 import com.example.one_percent.dto.HabitDTO;
+import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.HabitMapper;
 import com.example.one_percent.model.Habit;
 import com.example.one_percent.repository.HabitRepository;
@@ -97,7 +98,7 @@ class HabitServiceTest {
     @Test
     void updateHabit_updatesFieldsAndBumpsLastUpdated() {
         Habit existing = new Habit("h1", "alice", "Read", null, "#fff", false, "standard", null, null, null, null);
-        when(habitRepository.findById("h1")).thenReturn(Optional.of(existing));
+        when(habitRepository.findByIdAndUserId("h1", "alice")).thenReturn(Optional.of(existing));
         when(habitRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         HabitDTO update = dto("standard", "Read more", null, null);
         update.setId("h1");
@@ -111,19 +112,42 @@ class HabitServiceTest {
     }
 
     @Test
-    void updateHabit_unknownIdIsRejected() {
-        when(habitRepository.findById("missing")).thenReturn(Optional.empty());
-        HabitDTO update = dto("standard", "x", null, null);
-        update.setId("missing");
+    void updateHabit_refusesAnotherUsersHabit() {
+        // bob's habit: the owner-scoped lookup finds nothing for alice
+        when(habitRepository.findByIdAndUserId("bobs", "alice")).thenReturn(Optional.empty());
+        HabitDTO update = dto("standard", "hacked", null, null);
+        update.setId("bobs");
 
-        assertThatThrownBy(() -> habitService.updateHabit(update)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> habitService.updateHabit(update)).isInstanceOf(ResourceNotFoundException.class);
+        verify(habitRepository, never()).save(any());
+        verify(habitRepository, never()).findById(any());
     }
 
     @Test
-    void deleteHabit_unknownIdIsRejected() {
-        when(habitRepository.existsById("missing")).thenReturn(false);
+    void deleteHabit_deletesOwnHabit() {
+        Habit mine = new Habit("h1", "alice", "Read", null, "#fff", false, "standard", null, null, null, null);
+        when(habitRepository.findByIdAndUserId("h1", "alice")).thenReturn(Optional.of(mine));
 
-        assertThatThrownBy(() -> habitService.deleteHabit("missing")).isInstanceOf(IllegalArgumentException.class);
+        habitService.deleteHabit("h1");
+
+        verify(habitRepository).delete(mine);
+    }
+
+    @Test
+    void deleteHabit_refusesAnotherUsersOrMissingHabit() {
+        when(habitRepository.findByIdAndUserId("bobs", "alice")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> habitService.deleteHabit("bobs")).isInstanceOf(ResourceNotFoundException.class);
+        verify(habitRepository, never()).delete(any());
         verify(habitRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void createHabit_ignoresAClientSuppliedId() {
+        when(habitRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        HabitDTO request = dto("standard", "Read", null, null);
+        request.setId("someone-elses-habit-id");
+
+        assertThat(habitService.createHabit(request).getId()).isNull();
     }
 }
