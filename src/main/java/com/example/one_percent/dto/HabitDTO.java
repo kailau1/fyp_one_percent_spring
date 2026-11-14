@@ -3,7 +3,7 @@ package com.example.one_percent.dto;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -22,6 +22,6 @@ public class HabitDTO {
     private String habitType;
     private String trigger;
     private String action;
-    private LocalDateTime createdAt;
-    private LocalDateTime lastUpdated;
+    private Instant createdAt;
+    private Instant lastUpdated;
 }

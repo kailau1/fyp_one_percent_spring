@@ -5,6 +5,7 @@ import com.example.one_percent.model.User;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.repository.HabitHistoryRepository;
 import com.example.one_percent.repository.HabitRepository;
+import com.example.one_percent.util.UserClock;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ public class HabitHistoryService {
 
     private final HabitHistoryRepository habitHistoryRepository;
     private final HabitRepository habitRepository;
+    private final UserClock userClock;
 
     private User getAuthenticatedUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -48,12 +50,12 @@ public class HabitHistoryService {
 
     public Optional<HabitHistory> getTodayHabitStatus(String habitId) {
         User user = requireOwnerOf(habitId);
-        return habitHistoryRepository.findByUserIdAndHabitIdAndDate(user.getId(), habitId, LocalDate.now());
+        return habitHistoryRepository.findByUserIdAndHabitIdAndDate(user.getId(), habitId, userClock.today(user));
     }
 
     public List<HabitHistory> getTodayHabits() {
         User user = getAuthenticatedUser();
-        return habitHistoryRepository.findByUserIdAndDate(user.getId(), LocalDate.now());
+        return habitHistoryRepository.findByUserIdAndDate(user.getId(), userClock.today(user));
     }
 
     public List<HabitHistory> getHabitHistory(String habitId) {
@@ -67,7 +69,7 @@ public class HabitHistoryService {
      */
     public List<HabitHistory> getHistoryBetween(LocalDate from, LocalDate to) {
         User user = getAuthenticatedUser();
-        LocalDate end = to != null ? to : LocalDate.now();
+        LocalDate end = to != null ? to : userClock.today(user);
         LocalDate start = from != null ? from : end.minusDays(365);
         if (start.isAfter(end)) {
             throw new IllegalArgumentException("'from' must not be after 'to'.");
@@ -80,8 +82,8 @@ public class HabitHistoryService {
     public HabitHistory markHabitCompleted(String habitId) {
         User user = requireOwnerOf(habitId);
         HabitHistory history = habitHistoryRepository
-                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, LocalDate.now())
-                .orElse(new HabitHistory(null, user.getId(), habitId, LocalDate.now(), false));
+                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, userClock.today(user))
+                .orElse(new HabitHistory(null, user.getId(), habitId, userClock.today(user), false));
 
         history.setCompleted(true);
         return habitHistoryRepository.save(history);
@@ -90,8 +92,8 @@ public class HabitHistoryService {
     public HabitHistory unmarkHabitCompleted(String habitId) {
         User user = requireOwnerOf(habitId);
         HabitHistory history = habitHistoryRepository
-                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, LocalDate.now())
-                .orElse(new HabitHistory(null, user.getId(), habitId, LocalDate.now(), false));
+                .findByUserIdAndHabitIdAndDate(user.getId(), habitId, userClock.today(user))
+                .orElse(new HabitHistory(null, user.getId(), habitId, userClock.today(user), false));
 
         history.setCompleted(false);
         return habitHistoryRepository.save(history);

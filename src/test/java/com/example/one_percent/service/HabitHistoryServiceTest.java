@@ -10,7 +10,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import com.example.one_percent.util.UserClock;
+import java.time.Clock;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -31,11 +32,11 @@ class HabitHistoryServiceTest {
     @Mock
     private HabitRepository habitRepository;
 
-    @InjectMocks
     private HabitHistoryService service;
 
     @BeforeEach
     void setUp() {
+        service = new HabitHistoryService(repository, habitRepository, new UserClock(Clock.systemUTC()));
         TestAuth.loginAs("alice");
         lenient().when(habitRepository.existsByIdAndUserId("h1", "alice")).thenReturn(true);
         lenient().when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -124,5 +125,20 @@ class HabitHistoryServiceTest {
 
         assertThat(saved.getId()).isEqualTo("rec1");
         assertThat(saved.isCompleted()).isFalse();
+    }
+
+    @Test
+    void markCompleted_recordsTheDayWhereTheUserIs() {
+        // 20:00 on 1 Jan in UTC is already 2 Jan in Auckland (UTC+13 in summer)
+        Clock clock = Clock.fixed(java.time.Instant.parse("2026-01-01T20:00:00Z"), java.time.ZoneOffset.UTC);
+        HabitHistoryService inAuckland = new HabitHistoryService(repository, habitRepository, new UserClock(clock));
+        TestAuth.loginAs("alice").setTimeZone("Pacific/Auckland");
+        LocalDate secondOfJanuary = LocalDate.of(2026, 1, 2);
+        when(repository.findByUserIdAndHabitIdAndDate("alice", "h1", secondOfJanuary)).thenReturn(Optional.empty());
+        when(repository.save(any(HabitHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        HabitHistory saved = inAuckland.markHabitCompleted("h1");
+
+        assertThat(saved.getDate()).isEqualTo(secondOfJanuary);
     }
 }

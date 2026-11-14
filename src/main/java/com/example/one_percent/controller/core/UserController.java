@@ -1,5 +1,6 @@
 package com.example.one_percent.controller.core;
 
+import com.example.one_percent.dto.TimeZoneRequestDTO;
 import com.example.one_percent.dto.UserDTO;
 import com.example.one_percent.dto.auth.UserRegistrationDTO;
 import com.example.one_percent.dto.auth.LoginRequestDTO;
@@ -25,5 +26,17 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginRequestDTO loginDTO) {
         return userService.login(loginDTO);
+    }
+
+    /** The logged-in user's profile, including their time zone. */
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> me() {
+        return ResponseEntity.ok(userService.getCurrentUser());
+    }
+
+    /** Sets where the logged-in user's days start and end. 400 for an unknown time zone. */
+    @PutMapping("/me/time-zone")
+    public ResponseEntity<UserDTO> updateTimeZone(@RequestBody TimeZoneRequestDTO request) {
+        return ResponseEntity.ok(userService.updateTimeZone(request.getTimeZone()));
     }
 }

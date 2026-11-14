@@ -1,7 +1,7 @@
 package com.example.one_percent.dto;
 
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -13,5 +13,5 @@ public class JournalEntryDTO {
     private String title;
     private String content;
     private String llmResponse;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

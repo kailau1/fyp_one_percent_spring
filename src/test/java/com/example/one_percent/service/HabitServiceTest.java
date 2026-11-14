@@ -10,7 +10,9 @@ import com.example.one_percent.repository.HabitRepository;
 import com.example.one_percent.service.habit.HabitService;
 import com.example.one_percent.support.TestAuth;
 import org.junit.jupiter.api.AfterEach;
+import com.example.one_percent.util.UserClock;
 import org.junit.jupiter.api.BeforeEach;
+import java.time.Clock;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
@@ -41,7 +43,7 @@ class HabitServiceTest {
 
     @BeforeEach
     void setUp() {
-        habitService = new HabitService(habitRepository, mapper, habitHistoryRepository);
+        habitService = new HabitService(habitRepository, mapper, habitHistoryRepository, new UserClock(Clock.systemUTC()));
         TestAuth.loginAs("alice");
     }
 

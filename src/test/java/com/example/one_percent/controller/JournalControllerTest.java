@@ -77,6 +77,17 @@ class JournalControllerTest {
     }
 
     @Test
+    void sendsTimestampsInUtcWithTheOffset() throws Exception {
+        // a moment in time, so every client shows it in its own zone (no zone-less local time)
+        when(journalService.getJournalById("j1")).thenReturn(JournalEntryDTO.builder()
+                .id("j1").content("c").createdAt(java.time.Instant.parse("2026-11-14T09:30:00.123Z")).build());
+
+        mvc.perform(get("/api/journals/entry/j1").header("Authorization", TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdAt").value("2026-11-14T09:30:00.123Z"));
+    }
+
+    @Test
     void deletesOwnedEntry() throws Exception {
         mvc.perform(delete("/api/journals/j1").header("Authorization", TOKEN))
                 .andExpect(status().isNoContent());

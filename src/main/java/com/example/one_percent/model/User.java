@@ -24,5 +24,7 @@ public class User {
     private String password;
     private List<String> frequentThemes;
     private int themeUsageCount;
+    /** IANA time zone, e.g. "Europe/London": where the user's days start and end. Null until set. */
+    private String timeZone;
 
 }

@@ -8,6 +8,7 @@ import com.example.one_percent.model.HabitHistory;
 import com.example.one_percent.model.User;
 import com.example.one_percent.repository.HabitHistoryRepository;
 import com.example.one_percent.repository.HabitRepository;
+import com.example.one_percent.util.UserClock;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,8 +16,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,6 +27,7 @@ public class HabitService {
     private final HabitRepository habitRepository;
     private final HabitMapper habitMapper;
     private final HabitHistoryRepository habitHistoryRepository;
+    private final UserClock userClock;
     private static final Logger logger = LoggerFactory.getLogger(HabitService.class);
 
 
@@ -55,8 +55,8 @@ public class HabitService {
         Habit habit = habitMapper.toEntity(habitDTO);
         habit.setId(null); // never let the client choose (or overwrite) an ID on create
         habit.setUserId(user.getId());
-        habit.setCreatedAt(LocalDateTime.now());
-        habit.setLastUpdated(LocalDateTime.now());
+        habit.setCreatedAt(userClock.now());
+        habit.setLastUpdated(userClock.now());
 
         if ("trigger-action".equalsIgnoreCase(habit.getHabitType())) {
             if (habit.getTrigger() == null || habit.getAction() == null) {
@@ -78,7 +78,7 @@ public class HabitService {
         User user = getAuthenticatedUser();
         List<Habit> habits = habitRepository.findByUserId(user.getId());
 
-        Set<String> completedToday = habitHistoryRepository.findByUserIdAndDate(user.getId(), LocalDate.now())
+        Set<String> completedToday = habitHistoryRepository.findByUserIdAndDate(user.getId(), userClock.today(user))
                 .stream()
                 .filter(HabitHistory::isCompleted)
                 .map(HabitHistory::getHabitId)
@@ -103,11 +103,11 @@ public class HabitService {
         habitToUpdate.setHabitType(habitDTO.getHabitType());
         habitToUpdate.setTrigger(habitDTO.getTrigger());
         habitToUpdate.setAction(habitDTO.getAction());
-        habitToUpdate.setLastUpdated(LocalDateTime.now());
+        habitToUpdate.setLastUpdated(userClock.now());
 
         // Editing a habit never changes whether it's done today (that used to un-tick it).
         boolean completedToday = habitHistoryRepository
-                .findByUserIdAndHabitIdAndDate(habitToUpdate.getUserId(), habitToUpdate.getId(), LocalDate.now())
+                .findByUserIdAndHabitIdAndDate(habitToUpdate.getUserId(), habitToUpdate.getId(), userClock.today(getAuthenticatedUser()))
                 .map(HabitHistory::isCompleted)
                 .orElse(false);
 

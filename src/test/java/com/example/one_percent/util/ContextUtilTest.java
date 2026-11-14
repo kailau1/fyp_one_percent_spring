@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,11 +38,11 @@ class ContextUtilTest {
         lenient().when(embeddingService.cosineSimilarity(any(), any())).thenCallRealMethod();
     }
 
-    private Habit habit(String name, String type, String trigger, String action, LocalDateTime lastUpdated) {
+    private Habit habit(String name, String type, String trigger, String action, Instant lastUpdated) {
         return new Habit(null, "alice", name, null, "#fff", false, type, trigger, action, null, lastUpdated);
     }
 
-    private JournalEntry entry(String summary, List<Double> embedding, LocalDateTime createdAt) {
+    private JournalEntry entry(String summary, List<Double> embedding, Instant createdAt) {
         JournalEntry e = new JournalEntry();
         e.setUserId("alice");
         e.setLlmSummary(summary);
@@ -55,7 +55,7 @@ class ContextUtilTest {
 
     @Test
     void userContext_listsRecentHabitsAndFormatsTriggerActionHabits() {
-        LocalDateTime recent = LocalDateTime.now().minusDays(1);
+        Instant recent = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS);
         when(habitRepository.findByUserId("alice")).thenReturn(List.of(
                 habit("Read", "standard", null, null, recent),
                 habit(null, "trigger-action", "pour coffee", "meditate", recent)));
@@ -69,8 +69,8 @@ class ContextUtilTest {
     @Test
     void userContext_skipsStaleHabitsWithoutWritingNull() {
         when(habitRepository.findByUserId("alice")).thenReturn(List.of(
-                habit("Old habit", "standard", null, null, LocalDateTime.now().minusDays(30)),
-                habit("Recent", "standard", null, null, LocalDateTime.now()),
+                habit("Old habit", "standard", null, null, Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS)),
+                habit("Recent", "standard", null, null, Instant.now()),
                 habit("Never updated", "standard", null, null, null)));
         when(embeddingService.getFrequentThemes("alice")).thenReturn(List.of());
 
@@ -82,7 +82,7 @@ class ContextUtilTest {
     @Test
     void userContext_omitsHabitSectionWhenNothingIsRecent() {
         when(habitRepository.findByUserId("alice")).thenReturn(List.of(
-                habit("Old", "standard", null, null, LocalDateTime.now().minusDays(30))));
+                habit("Old", "standard", null, null, Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS))));
         when(embeddingService.getFrequentThemes("alice")).thenReturn(List.of("burnout"));
 
         String ctx = contextUtil.getUserContext("alice");
@@ -132,12 +132,12 @@ class ContextUtilTest {
     @Test
     void llmContext_fallsBackToMostRecentSummariesAndToleratesMissingDates() {
         JournalEntry current = entry(null, List.of(1.0), null);
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         when(journalRepository.findByUserId("alice")).thenReturn(List.of(
-                entry("oldest", null, now.minusDays(5)),
+                entry("oldest", null, now.minus(5, java.time.temporal.ChronoUnit.DAYS)),
                 entry("undated", null, null),
                 entry("newest", null, now),
-                entry("middle", null, now.minusDays(1))));
+                entry("middle", null, now.minus(1, java.time.temporal.ChronoUnit.DAYS))));
 
         String ctx = contextUtil.getLLMContext(current);
 
