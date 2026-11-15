@@ -160,9 +160,24 @@ public class JournalService {
 
     public JournalEntryDTO updateJournalEntry(JournalEntryDTO entryDTO) {
         JournalEntry journalToUpdate = getOwnedJournalEntry(entryDTO.getId());
+        boolean contentChanged = !java.util.Objects.equals(journalToUpdate.getContent(), entryDTO.getContent());
         journalToUpdate.setTitle(entryDTO.getTitle());
         journalToUpdate.setContent(entryDTO.getContent());
         journalToUpdate.setLlmResponse(entryDTO.getLlmResponse());
+
+        // Re-embed edited text so themes and "similar past entries" follow what the entry now says.
+        // Best effort, as on create: if OpenAI is unavailable the edit is still saved, and the stale
+        // embedding is dropped rather than kept describing text that's gone.
+        if (contentChanged && (entryDTO.getContent() == null || entryDTO.getContent().isBlank())) {
+            journalToUpdate.setContentEmbedding(null); // nothing to describe, and no point paying OpenAI to say so
+        } else if (contentChanged) {
+            try {
+                journalToUpdate.setContentEmbedding(embeddingService.generateEmbedding(journalToUpdate.getContent()));
+            } catch (IOException | RuntimeException e) {
+                logger.warn("Saving edited journal entry without an embedding: {}", e.getMessage());
+                journalToUpdate.setContentEmbedding(null);
+            }
+        }
 
         return journalMapper.toDto(journalRepository.save(journalToUpdate));
     }

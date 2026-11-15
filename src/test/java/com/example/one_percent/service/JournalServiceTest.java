@@ -235,6 +235,64 @@ class JournalServiceTest {
     }
 
     @Test
+    void updateJournalEntry_reEmbedsEditedText() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("old text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(embeddingService.generateEmbedding("new text")).thenReturn(List.of(0.9));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("t").content("new text").build());
+
+        assertThat(mine.getContentEmbedding()).containsExactly(0.9);
+    }
+
+    @Test
+    void updateJournalEntry_keepsTheEmbeddingWhenOnlyTheTitleChanges() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("same text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("Renamed").content("same text").build());
+
+        assertThat(mine.getContentEmbedding()).containsExactly(0.1);
+        verify(embeddingService, never()).generateEmbedding(anyString());
+    }
+
+    @Test
+    void updateJournalEntry_doesntAskOpenAiToEmbedEmptyText() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("old text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("t").content("  ").build());
+
+        assertThat(mine.getContentEmbedding()).isNull();
+        verify(embeddingService, never()).generateEmbedding(any());
+    }
+
+    @Test
+    void updateJournalEntry_savesTheEditEvenWhenEmbeddingFails() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("old text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(embeddingService.generateEmbedding("new text")).thenThrow(new IOException("OpenAI down"));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("t").content("new text").build());
+
+        assertThat(mine.getContent()).isEqualTo("new text");
+        assertThat(mine.getContentEmbedding()).isNull(); // the old one described text that's gone
+        verify(journalRepository).save(mine);
+    }
+
+    @Test
     void addResponse_storesFeedbackAndSummaryOnOwnedEntry() throws IOException {
         JournalEntry mine = entry("j1", ALICE);
         storeInDb(mine);

@@ -16,6 +16,12 @@ public interface JournalRepositoryCustom {
      */
     Page<JournalEntry> searchByUser(String userId, String text, Pageable pageable);
 
+    /**
+     * All of a user's entries, newest first, with only what theme matching needs: id, title,
+     * createdAt and the embedding (never the text).
+     */
+    List<JournalEntry> findForThemes(String userId);
+
     /** When each of a user's entries was written, for entries written in [from, to). */
     List<Instant> findCreatedAtBetween(String userId, Instant from, Instant to);
 }

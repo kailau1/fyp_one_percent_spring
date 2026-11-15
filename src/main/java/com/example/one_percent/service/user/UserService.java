@@ -7,13 +7,12 @@ import com.example.one_percent.dto.auth.UserRegistrationDTO;
 import com.example.one_percent.mapper.UserMapper;
 import com.example.one_percent.model.User;
 import com.example.one_percent.repository.UserRepository;
+import com.example.one_percent.security.CurrentUser;
 import com.example.one_percent.security.JwtUtil;
 import com.example.one_percent.util.UserClock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -29,16 +28,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    private User getAuthenticatedUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User user) {
-            return user;
-        }
-        throw new IllegalStateException("No authenticated user");
-    }
-
     public UserDTO getCurrentUser() {
-        return userMapper.toDto(getAuthenticatedUser());
+        return userMapper.toDto(CurrentUser.get());
     }
 
     /** Stores the user's IANA time zone (e.g. "Europe/London"); rejects anything Java doesn't recognise. */
@@ -47,7 +38,7 @@ public class UserService {
         if (!UserClock.isValidZone(zone)) {
             throw new IllegalArgumentException("That isn't a time zone we recognise, e.g. \"Europe/London\".");
         }
-        User user = getAuthenticatedUser();
+        User user = CurrentUser.get();
         userRepository.updateTimeZone(user.getId(), zone);
         user.setTimeZone(zone);
         return userMapper.toDto(user);
