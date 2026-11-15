@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.annotation.Id;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -25,6 +25,6 @@ public class Habit {
     private String habitType;
     private String trigger;
     private String action;
-    private LocalDateTime createdAt;
-    private LocalDateTime lastUpdated;
+    private Instant createdAt;
+    private Instant lastUpdated;
 }

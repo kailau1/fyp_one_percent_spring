@@ -9,6 +9,7 @@ import com.example.one_percent.model.User;
 import com.example.one_percent.repository.UserRepository;
 import com.example.one_percent.security.JwtUtil;
 import com.example.one_percent.service.user.UserService;
+import com.example.one_percent.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -106,5 +107,49 @@ class UserServiceTest {
         ResponseEntity<AuthResponseDTO> response = userService.login(new LoginRequestDTO("nobody@example.com", "x"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void updateTimeZone_savesItOnTheLoggedInUser() {
+        TestAuth.loginAs("alice");
+        try {
+            UserDTO dto = userService.updateTimeZone(" America/New_York ");
+
+            // only the zone is written: saving the whole user could overwrite other changes
+            verify(userRepository).updateTimeZone("alice", "America/New_York");
+            verify(userRepository, never()).save(any());
+            assertThat(dto.getTimeZone()).isEqualTo("America/New_York");
+        } finally {
+            TestAuth.clear();
+        }
+    }
+
+    @Test
+    void updateTimeZone_rejectsAnUnknownZone() {
+        TestAuth.loginAs("alice");
+        try {
+            assertThatThrownBy(() -> userService.updateTimeZone("Mars/Olympus"))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> userService.updateTimeZone(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> userService.updateTimeZone("-04:00"))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(userRepository, never()).updateTimeZone(any(), any());
+        } finally {
+            TestAuth.clear();
+        }
+    }
+
+    @Test
+    void getCurrentUser_returnsTheProfileAndZone() {
+        User alice = TestAuth.loginAs("alice");
+        alice.setTimeZone("Europe/London");
+        try {
+            UserDTO dto = userService.getCurrentUser();
+            assertThat(dto.getEmail()).isEqualTo("alice@example.com");
+            assertThat(dto.getTimeZone()).isEqualTo("Europe/London");
+        } finally {
+            TestAuth.clear();
+        }
     }
 }

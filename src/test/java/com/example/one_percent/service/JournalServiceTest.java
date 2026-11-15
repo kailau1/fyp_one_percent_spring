@@ -10,7 +10,9 @@ import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.journal.JournalService;
 import com.example.one_percent.support.TestAuth;
 import org.junit.jupiter.api.AfterEach;
+import com.example.one_percent.util.UserClock;
 import org.junit.jupiter.api.BeforeEach;
+import java.time.Clock;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,7 +49,7 @@ class JournalServiceTest {
 
     @BeforeEach
     void setUp() {
-        journalService = new JournalService(journalRepository, mapper, summaryService, embeddingService);
+        journalService = new JournalService(journalRepository, mapper, summaryService, embeddingService, new UserClock(Clock.systemUTC()));
         TestAuth.loginAs(ALICE);
     }
 

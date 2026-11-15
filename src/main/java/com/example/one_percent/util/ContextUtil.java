@@ -9,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,11 +23,14 @@ public class ContextUtil {
     private final HabitRepository habitRepository;
     private final JournalRepository journalRepository;
     private final EmbeddingService embeddingService;
+    private final Clock clock;
 
-    public ContextUtil(HabitRepository habitRepository, JournalRepository journalRepository, EmbeddingService embeddingService) {
+    public ContextUtil(HabitRepository habitRepository, JournalRepository journalRepository, EmbeddingService embeddingService,
+                       Clock clock) {
         this.habitRepository = habitRepository;
         this.journalRepository = journalRepository;
         this.embeddingService = embeddingService;
+        this.clock = clock;
     }
 
     public String getUserContext(String userId) {
@@ -34,7 +39,7 @@ public class ContextUtil {
 
         StringBuilder context = new StringBuilder("Context for the assistant:\n");
 
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
+        Instant cutoff = clock.instant().minus(7, ChronoUnit.DAYS);
         String habitDescriptions = habits.stream()
                 // Only recently-active habits; stale ones used to be joined in as the text "null".
                 .filter(habit -> habit.getLastUpdated() != null && habit.getLastUpdated().isAfter(cutoff))

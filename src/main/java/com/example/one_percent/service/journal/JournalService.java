@@ -8,6 +8,7 @@ import com.example.one_percent.model.User;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.ai.SummaryService;
 import com.example.one_percent.repository.JournalRepository;
+import com.example.one_percent.util.UserClock;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,6 +30,7 @@ public class JournalService {
     private final JournalEntryMapper journalMapper;
     private final SummaryService summaryService;
     private final EmbeddingService embeddingService;
+    private final UserClock userClock;
 
     private User getAuthenticatedUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -68,7 +69,7 @@ public class JournalService {
         JournalEntry entry = journalMapper.toEntity(entryDTO);
         entry.setId(null); // never let the client choose (or overwrite) an ID on create
         entry.setUserId(user.getId());
-        entry.setCreatedAt(LocalDateTime.now());
+        entry.setCreatedAt(userClock.now());
 
         // The embedding and summary are extras for the AI features. If OpenAI is unreachable (or the
         // API key is wrong) the entry is still saved: a journal must never refuse to keep someone's
