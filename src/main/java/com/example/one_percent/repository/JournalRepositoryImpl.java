@@ -52,7 +52,7 @@ public class JournalRepositoryImpl implements JournalRepositoryCustom {
     public List<JournalEntry> findForThemes(String userId) {
         Query query = Query.query(Criteria.where("userId").is(userId))
                 .with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("_id")));
-        query.fields().include("title", "createdAt", "contentEmbedding");
+        query.fields().include("title", "createdAt", "contentEmbedding", "themeScores", "themesVersion", "themeOverrides");
         return mongoTemplate.find(query, JournalEntry.class);
     }
 

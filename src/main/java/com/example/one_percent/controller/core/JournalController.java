@@ -1,6 +1,7 @@
 package com.example.one_percent.controller.core;
 
 import com.example.one_percent.dto.JournalEntryDTO;
+import com.example.one_percent.dto.ThemeSelectionDTO;
 import com.example.one_percent.dto.PageDTO;
 import com.example.one_percent.service.journal.JournalService;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +60,12 @@ public class JournalController {
         return ResponseEntity.noContent().build();
     }
 
+
+    /** Replaces the entry's themes with the user's choice; 400 for a theme that doesn't exist. */
+    @PutMapping("/entry/{id}/themes")
+    public ResponseEntity<JournalEntryDTO> setThemes(@PathVariable String id, @RequestBody ThemeSelectionDTO selection) {
+        return ResponseEntity.ok(journalService.setThemes(id, selection.getThemes()));
+    }
 
     @PutMapping("/entry")
     public ResponseEntity<JournalEntryDTO> updateJournal(@RequestBody JournalEntryDTO entryDTO) {

@@ -25,7 +25,7 @@ public class ThemeInsightsDTO {
     public static class Theme {
         /** e.g. "procrastination" */
         private String name;
-        /** How many analysed entries touch on it (each entry counts towards its three closest themes). */
+        /** How many analysed entries are about it (an entry can have up to three themes, or none). */
         private int entryCount;
         /** Up to three of those entries, newest first, to read again. */
         private List<EntryRef> recentEntries;

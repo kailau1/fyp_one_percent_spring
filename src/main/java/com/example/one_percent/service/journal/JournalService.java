@@ -81,7 +81,7 @@ public class JournalService {
             throw new IllegalArgumentException("Search text can be at most " + MAX_QUERY_LENGTH + " characters.");
         }
         User user = getAuthenticatedUser();
-        return PageDTO.of(journalRepository.searchByUser(user.getId(), query, PageRequest.of(page, size)), journalMapper::toDto);
+        return PageDTO.of(journalRepository.searchByUser(user.getId(), query, PageRequest.of(page, size)), this::toDto);
     }
 
     /**
@@ -118,8 +118,41 @@ public class JournalService {
 
         return journalRepository.findByUserId(user.getId())
                 .stream()
-                .map(journalMapper::toDto)
+                .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    /** An entry as the API shows it, with its effective themes. */
+    private JournalEntryDTO toDto(JournalEntry entry) {
+        JournalEntryDTO dto = journalMapper.toDto(entry);
+        dto.setThemes(embeddingService.effectiveThemes(entry));
+        return dto;
+    }
+
+    /** As toDto, plus the theme choices a single-entry view needs for its picker. */
+    private JournalEntryDTO toDetailDto(JournalEntry entry) {
+        JournalEntryDTO dto = toDto(entry);
+        dto.setThemeChoices(embeddingService.themeNames());
+        return dto;
+    }
+
+    /**
+     * Sets the themes the user wants this entry to have. Stored as corrections to the automatic
+     * tags (added / removed), so if the automatic tags improve later, the user's choices still hold.
+     */
+    public JournalEntryDTO setThemes(String id, List<String> wanted) {
+        JournalEntry entry = getOwnedJournalEntry(id);
+        List<String> known = embeddingService.themeNames();
+        List<String> chosen = wanted == null ? List.of() : wanted.stream().distinct().toList();
+        List<String> unknown = chosen.stream().filter(theme -> !known.contains(theme)).toList();
+        if (!unknown.isEmpty()) {
+            throw new IllegalArgumentException("Unknown theme: " + String.join(", ", unknown) + ".");
+        }
+        List<String> automatic = embeddingService.automaticThemes(entry);
+        List<String> added = chosen.stream().filter(theme -> !automatic.contains(theme)).toList();
+        List<String> removed = automatic.stream().filter(theme -> !chosen.contains(theme)).toList();
+        entry.setThemeOverrides(added.isEmpty() && removed.isEmpty() ? null : new JournalEntry.ThemeOverrides(added, removed));
+        return toDetailDto(journalRepository.save(entry));
     }
 
     public JournalEntryDTO createJournalEntry(JournalEntryDTO entryDTO) {
@@ -138,6 +171,7 @@ public class JournalService {
         } catch (IOException | RuntimeException e) {
             logger.warn("Saving journal entry without an embedding: {}", e.getMessage());
         }
+        embeddingService.tag(entry);
 
         if (entry.getLlmResponse() != null && !entry.getLlmResponse().isBlank()) {
             try {
@@ -147,11 +181,11 @@ public class JournalService {
             }
         }
 
-        return journalMapper.toDto(journalRepository.save(entry));
+        return toDetailDto(journalRepository.save(entry));
     }
 
     public JournalEntryDTO getJournalById(String id) {
-        return journalMapper.toDto(getOwnedJournalEntry(id));
+        return toDetailDto(getOwnedJournalEntry(id));
     }
 
     public void deleteJournalEntry(String id) {
@@ -178,8 +212,12 @@ public class JournalService {
                 journalToUpdate.setContentEmbedding(null);
             }
         }
+        if (contentChanged) {
+            // new text, new automatic tags; the user's own corrections are kept
+            embeddingService.tag(journalToUpdate);
+        }
 
-        return journalMapper.toDto(journalRepository.save(journalToUpdate));
+        return toDetailDto(journalRepository.save(journalToUpdate));
     }
 
     /**
