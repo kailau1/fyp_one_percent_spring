@@ -22,6 +22,9 @@ public interface JournalRepositoryCustom {
      */
     List<JournalEntry> findForThemes(String userId);
 
+    /** A user's entries written in [from, to), oldest first, without their embeddings. */
+    List<JournalEntry> findWrittenBetween(String userId, Instant from, Instant to);
+
     /** When each of a user's entries was written, for entries written in [from, to). */
     List<Instant> findCreatedAtBetween(String userId, Instant from, Instant to);
 }

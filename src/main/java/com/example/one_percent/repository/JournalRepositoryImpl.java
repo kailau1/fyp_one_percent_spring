@@ -57,6 +57,14 @@ public class JournalRepositoryImpl implements JournalRepositoryCustom {
     }
 
     @Override
+    public List<JournalEntry> findWrittenBetween(String userId, Instant from, Instant to) {
+        Query query = Query.query(Criteria.where("userId").is(userId).and("createdAt").gte(from).lt(to))
+                .with(Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("_id")));
+        query.fields().exclude("contentEmbedding");
+        return mongoTemplate.find(query, JournalEntry.class);
+    }
+
+    @Override
     public List<Instant> findCreatedAtBetween(String userId, Instant from, Instant to) {
         Query query = Query.query(Criteria.where("userId").is(userId).and("createdAt").gte(from).lt(to));
         query.fields().include("createdAt");

@@ -51,8 +51,24 @@ public class OpenAIClient {
      * a slightly plainer answer beats an error.
      */
     public String sendChatCompletion(ArrayNode messages, AiModel model, int maxTokens, double temperature) throws IOException {
+        return complete(messages, model, maxTokens, temperature, false).text();
+    }
+
+    /** A reply and the model that actually wrote it (the fast one, if the smart one was unavailable). */
+    public record Reply(String text, String model) {
+    }
+
+    /**
+     * Like sendChatCompletion, but asks for a JSON object (response_format json_object, which
+     * OpenAI and Gemini's OpenAI endpoint both accept). The reply is still text: parse and check it.
+     */
+    public Reply sendJsonCompletion(ArrayNode messages, AiModel model, int maxTokens, double temperature) throws IOException {
+        return complete(messages, model, maxTokens, temperature, true);
+    }
+
+    private Reply complete(ArrayNode messages, AiModel model, int maxTokens, double temperature, boolean json) throws IOException {
         try {
-            return chat(messages, model, maxTokens, temperature);
+            return new Reply(chat(messages, model, maxTokens, temperature, json), modelFor(model));
         } catch (IOException e) {
             String message = e.getMessage() == null ? "" : e.getMessage();
             boolean busy = e instanceof SocketTimeoutException || message.contains("HTTP 503") || message.contains("HTTP 429");
@@ -60,11 +76,16 @@ public class OpenAIClient {
             if (!busy || !canFallBack) throw e;
             logger.warn("Smart model '{}' unavailable ({}); answering with '{}' instead",
                     settings.smartModel(), e.getMessage(), settings.fastModel());
-            return chat(messages, AiModel.FAST, maxTokens, temperature);
+            return new Reply(chat(messages, AiModel.FAST, maxTokens, temperature, json), modelFor(AiModel.FAST));
         }
     }
 
-    private String chat(ArrayNode messages, AiModel model, int maxTokens, double temperature) throws IOException {
+    /** The model name that answers for a role. */
+    public String modelFor(AiModel model) {
+        return model == AiModel.SMART ? settings.smartModel() : settings.fastModel();
+    }
+
+    private String chat(ArrayNode messages, AiModel model, int maxTokens, double temperature, boolean json) throws IOException {
         ObjectNode payload = mapper.createObjectNode();
         boolean smart = model == AiModel.SMART;
         payload.put("model", smart ? settings.smartModel() : settings.fastModel());
@@ -74,6 +95,9 @@ public class OpenAIClient {
         String effort = smart ? settings.smartReasoningEffort() : settings.fastReasoningEffort();
         if (effort != null) {
             payload.put("reasoning_effort", effort);
+        }
+        if (json) {
+            payload.putObject("response_format").put("type", "json_object");
         }
 
         JsonNode response = post("/chat/completions", payload, "chat completion");
