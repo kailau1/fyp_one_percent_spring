@@ -6,9 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -20,14 +23,17 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class OpenAIClient {
 
+    private static final Logger logger = LoggerFactory.getLogger(OpenAIClient.class);
+
     private static final MediaType JSON = MediaType.parse("application/json");
 
     private final AiSettings settings;
     private final ObjectMapper mapper = new ObjectMapper();
-    // One shared client (it pools connections). Generous read timeout: feedback can take a while.
+    // One shared client (it pools connections). The read timeout stays under the web app's 60s AI
+    // timeout, so a hung model fails here first and there's time to fall back to the fast model.
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(90, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
             .build();
 
     public OpenAIClient(AiSettings settings) {
@@ -38,7 +44,25 @@ public class OpenAIClient {
         return settings;
     }
 
+    /**
+     * A chat reply from the model for `model`'s role. If the smart model is overloaded (HTTP 503,
+     * common on free tiers) or doesn't answer in time, the request is retried once with the fast
+     * model: a slightly plainer answer beats an error.
+     */
     public String sendChatCompletion(ArrayNode messages, AiModel model, int maxTokens, double temperature) throws IOException {
+        try {
+            return chat(messages, model, maxTokens, temperature);
+        } catch (IOException e) {
+            boolean busy = e instanceof SocketTimeoutException || (e.getMessage() != null && e.getMessage().contains("HTTP 503"));
+            boolean canFallBack = model == AiModel.SMART && !settings.fastModel().equals(settings.smartModel());
+            if (!busy || !canFallBack) throw e;
+            logger.warn("Smart model '{}' unavailable ({}); answering with '{}' instead",
+                    settings.smartModel(), e.getMessage(), settings.fastModel());
+            return chat(messages, AiModel.FAST, maxTokens, temperature);
+        }
+    }
+
+    private String chat(ArrayNode messages, AiModel model, int maxTokens, double temperature) throws IOException {
         ObjectNode payload = mapper.createObjectNode();
         boolean smart = model == AiModel.SMART;
         payload.put("model", smart ? settings.smartModel() : settings.fastModel());

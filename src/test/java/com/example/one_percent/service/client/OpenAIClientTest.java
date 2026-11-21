@@ -100,6 +100,30 @@ class OpenAIClientTest {
     }
 
     @Test
+    void anOverloadedSmartModelFallsBackToTheFastOne() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(503).setBody("{\"error\":{\"message\":\"high demand\"}}"));
+        server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"Plainer feedback.\"}}]}"));
+        OpenAIClient client = client("k", "none", "minimal", null);
+
+        assertThat(chat(client, AiModel.SMART)).isEqualTo("Plainer feedback.");
+
+        assertThat(body(server.takeRequest()).get("model").asText()).isEqualTo("smart-model");
+        JsonNode retry = body(server.takeRequest());
+        assertThat(retry.get("model").asText()).isEqualTo("fast-model");
+        assertThat(retry.get("reasoning_effort").asText()).isEqualTo("minimal"); // the fast model's own setting
+    }
+
+    @Test
+    void otherFailuresAndTheFastModelAreNotRetried() {
+        server.enqueue(new MockResponse().setResponseCode(400).setBody("{\"error\":{\"message\":\"bad request\"}}"));
+        server.enqueue(new MockResponse().setResponseCode(503).setBody("busy"));
+
+        assertThatThrownBy(() -> chat(client("k", null), AiModel.SMART)).hasMessageContaining("HTTP 400");
+        assertThatThrownBy(() -> chat(client("k", null), AiModel.FAST)).hasMessageContaining("HTTP 503");
+        assertThat(server.getRequestCount()).isEqualTo(2);
+    }
+
+    @Test
     void sendsNoAuthorizationHeaderWithoutAKey() throws Exception {
         // e.g. a local Ollama, which needs none
         server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"ok\"}}]}"));
