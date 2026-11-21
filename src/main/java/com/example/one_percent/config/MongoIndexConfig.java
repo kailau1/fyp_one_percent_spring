@@ -1,6 +1,7 @@
 package com.example.one_percent.config;
 
 import com.example.one_percent.model.JournalEntry;
+import com.example.one_percent.model.WeeklyReflection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -28,5 +29,10 @@ public class MongoIndexConfig implements ApplicationRunner {
                 .on("createdAt", Sort.Direction.DESC)
                 .on("_id", Sort.Direction.DESC)
                 .named("userId_createdAt_id"));
+        // the reflection history: a user's weeks, newest first
+        mongoTemplate.indexOps(WeeklyReflection.class).ensureIndex(new Index()
+                .on("userId", Sort.Direction.ASC)
+                .on("weekStart", Sort.Direction.DESC)
+                .named("userId_weekStart"));
     }
 }

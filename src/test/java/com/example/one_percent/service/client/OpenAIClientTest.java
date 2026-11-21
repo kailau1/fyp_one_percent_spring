@@ -100,6 +100,19 @@ class OpenAIClientTest {
     }
 
     @Test
+    void jsonCompletionsAskForAJsonObjectAndPlainOnesDoNot() throws Exception {
+        server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"{\\\"a\\\":1}\"}}]}"));
+        server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"plain\"}}]}"));
+        OpenAIClient client = client("k", null);
+        var messages = client.createMessages(List.of(client.createSingleMessage("user", "hello")));
+
+        assertThat(client.sendJsonCompletion(messages, AiModel.SMART, 100, 0.5)).isEqualTo(new OpenAIClient.Reply("{\"a\":1}", "smart-model"));
+        assertThat(body(server.takeRequest()).path("response_format").path("type").asText()).isEqualTo("json_object");
+        chat(client, AiModel.SMART);
+        assertThat(body(server.takeRequest()).has("response_format")).isFalse();
+    }
+
+    @Test
     void anOverloadedSmartModelFallsBackToTheFastOne() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(503).setBody("{\"error\":{\"message\":\"high demand\"}}"));
         server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"Plainer feedback.\"}}]}"));

@@ -21,6 +21,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
+    @ExceptionHandler(AiUnavailableException.class)
+    public ResponseEntity<String> handleAiUnavailable(AiUnavailableException ex) {
+        logger.warn("AI unavailable: {}", ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
         logger.debug("Bad request: {}", ex.getMessage());
