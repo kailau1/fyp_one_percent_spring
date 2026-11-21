@@ -3,6 +3,8 @@ package com.example.one_percent.service;
 import com.example.one_percent.dto.ThemeInsightsDTO;
 import com.example.one_percent.model.JournalEntry;
 import com.example.one_percent.repository.JournalRepository;
+import com.example.one_percent.config.AiSettings;
+import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.insights.InsightsService;
 import com.example.one_percent.support.TestAuth;
@@ -36,7 +38,8 @@ class InsightsServiceTest {
     @SuppressWarnings("unchecked")
     void setUp() {
         // the real theme matching, so this tests what the page will actually show
-        EmbeddingService embeddingService = new EmbeddingService(journalRepository);
+        EmbeddingService embeddingService = new EmbeddingService(journalRepository,
+                new OpenAIClient(AiSettings.openAiDefaults("test-key", "http://ai.invalid/v1")));
         ((Map<String, List<Double>>) ReflectionTestUtils.getField(embeddingService, "themeEmbeddings")).putAll(Map.of(
                 "burnout", List.of(1.0, 0.0, 0.0, 0.0),
                 "anxiety", List.of(0.0, 1.0, 0.0, 0.0),

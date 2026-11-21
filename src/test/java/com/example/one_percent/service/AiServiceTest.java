@@ -3,6 +3,8 @@ package com.example.one_percent.service;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.model.JournalEntry;
 import com.example.one_percent.service.ai.AiService;
+import com.example.one_percent.config.AiSettings;
+import com.example.one_percent.service.client.AiModel;
 import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.service.journal.JournalService;
 import com.example.one_percent.util.ContextUtil;
@@ -35,8 +37,8 @@ class AiServiceTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        openAIClient = spy(new OpenAIClient());
-        lenient().doReturn("feedback").when(openAIClient).sendChatCompletion(any(), anyString(), anyInt(), anyDouble());
+        openAIClient = spy(new OpenAIClient(AiSettings.openAiDefaults("test-key", "http://ai.invalid/v1")));
+        lenient().doReturn("feedback").when(openAIClient).sendChatCompletion(any(), any(AiModel.class), anyInt(), anyDouble());
         aiService = new AiService(openAIClient, journalService, contextUtil);
     }
 
@@ -59,7 +61,7 @@ class AiServiceTest {
 
         assertThat(result).isEqualTo("feedback");
         ArgumentCaptor<ArrayNode> messages = ArgumentCaptor.forClass(ArrayNode.class);
-        verify(openAIClient).sendChatCompletion(messages.capture(), eq("gpt-4o"), anyInt(), anyDouble());
+        verify(openAIClient).sendChatCompletion(messages.capture(), eq(AiModel.SMART), anyInt(), anyDouble());
         String userMessage = messages.getValue().get(1).get("content").asText();
         assertThat(userMessage).contains("CTX", "I procrastinated today", "PAST");
         verify(journalService, never()).buildDraftEntry(anyString());
@@ -85,7 +87,7 @@ class AiServiceTest {
 
         assertThatThrownBy(() -> aiService.getAiFeedback("bobs", null))
                 .isInstanceOf(ResourceNotFoundException.class);
-        verify(openAIClient, never()).sendChatCompletion(any(), anyString(), anyInt(), anyDouble());
+        verify(openAIClient, never()).sendChatCompletion(any(), any(AiModel.class), anyInt(), anyDouble());
     }
 
     @Test

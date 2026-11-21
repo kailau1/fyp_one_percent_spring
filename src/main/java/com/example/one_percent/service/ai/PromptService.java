@@ -1,5 +1,6 @@
 package com.example.one_percent.service.ai;
 
+import com.example.one_percent.service.client.AiModel;
 import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.util.ContextUtil;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -37,7 +38,7 @@ public class PromptService {
         ArrayNode messages = openAIClient.createMessages(List.of(systemMessage, userMessage));
         logger.debug("Prompt suggestion request: {}", messages);
 
-        String result = openAIClient.sendChatCompletion(messages, "gpt-4o", 300, 0.8);
+        String result = openAIClient.sendChatCompletion(messages, AiModel.SMART, 300, 0.8);
         List<String> prompts = parsePrompts(result);
         logger.debug("Generated {} prompts", prompts.size());
 

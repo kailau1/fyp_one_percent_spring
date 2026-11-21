@@ -1,5 +1,7 @@
 package com.example.one_percent.service.ai;
 
+import com.example.one_percent.config.AiSettings;
+import com.example.one_percent.service.client.AiModel;
 import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.util.ContextUtil;
 import org.junit.jupiter.api.Test;
@@ -48,11 +50,11 @@ class PromptServiceTest {
 
     @Test
     void getPromptSuggestions_buildsOnTheUsersContext() throws IOException {
-        OpenAIClient openAIClient = spy(new OpenAIClient());
+        OpenAIClient openAIClient = spy(new OpenAIClient(AiSettings.openAiDefaults("test-key", "http://ai.invalid/v1")));
         ContextUtil contextUtil = mock(ContextUtil.class);
         when(contextUtil.getUserContext("alice")).thenReturn("The user often writes about: burnout.");
         doReturn("One?\nTwo?").when(openAIClient).sendChatCompletion(
-                argThat(messages -> messages.toString().contains("burnout")), eq("gpt-4o"), anyInt(), anyDouble());
+                argThat(messages -> messages.toString().contains("burnout")), eq(AiModel.SMART), anyInt(), anyDouble());
 
         List<String> prompts = new PromptService(openAIClient, contextUtil).getPromptSuggestions("alice");
 

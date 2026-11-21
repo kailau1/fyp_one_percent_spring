@@ -7,6 +7,8 @@
 #
 #   scripts/dev-run.sh              # uses database "fyp_dev" (safe for testing)
 #   MONGO_DB=fyp scripts/dev-run.sh # uses your real data
+#   SPRING_PROFILES_ACTIVE=gemini scripts/dev-run.sh   # use Google Gemini (see application-gemini.properties)
+#   AI_BASE_URL=http://localhost:8090/v1 scripts/dev-run.sh  # the e2e stand-in for the AI (free, offline)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -15,4 +17,8 @@ MONGO_DB="${MONGO_DB:-fyp_dev}"
 export SPRING_DATA_MONGODB_URI="mongodb://${WINDOWS_HOST}:27017/${MONGO_DB}"
 
 echo "Using MongoDB at ${WINDOWS_HOST}:27017, database '${MONGO_DB}'"
+# Anything after the script name is passed to the app, e.g. --maintenance.task=reembed
+if [ "$#" -gt 0 ]; then
+  exec mvn -B -q spring-boot:run -Dspring-boot.run.arguments="$*"
+fi
 exec mvn -B -q spring-boot:run

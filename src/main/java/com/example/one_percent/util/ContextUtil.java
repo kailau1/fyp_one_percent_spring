@@ -107,7 +107,8 @@ public class ContextUtil {
         if (currentEntry.getContentEmbedding() == null) return List.of();
 
         return candidates.stream()
-                .filter(p -> p.getContentEmbedding() != null)
+                // vectors from a different embedding model can't be compared (they'd all score 0)
+                .filter(p -> p.getContentEmbedding() != null && p.getContentEmbedding().size() == currentEntry.getContentEmbedding().size())
                 .sorted(Comparator.comparingDouble(
                         p -> -embeddingService.cosineSimilarity(currentEntry.getContentEmbedding(), p.getContentEmbedding()))
                 )

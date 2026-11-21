@@ -1,5 +1,6 @@
 package com.example.one_percent.service.ai;
 
+import com.example.one_percent.service.client.AiModel;
 import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.model.JournalEntry;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -23,7 +24,7 @@ public class SummaryService {
         ObjectNode userMessage = openAIClient.createSingleMessage("user", entry.getContent());
         ArrayNode messages = openAIClient.createMessages(List.of(systemMessage, userMessage));
 
-        return openAIClient.sendChatCompletion(messages, "gpt-4o-mini", 100, 0.6);
+        return openAIClient.sendChatCompletion(messages, AiModel.FAST, 100, 0.6);
     }
 
     public String getFeedbackSummary(String feedbackText) throws IOException {
@@ -33,7 +34,7 @@ public class SummaryService {
         ObjectNode userMessage = openAIClient.createSingleMessage("user", feedbackText);
         ArrayNode messages = openAIClient.createMessages(List.of(systemMessage, userMessage));
 
-        return openAIClient.sendChatCompletion(messages, "gpt-4o-mini", 50, 0.6);
+        return openAIClient.sendChatCompletion(messages, AiModel.FAST, 50, 0.6);
     }
 
 }

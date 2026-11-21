@@ -1,7 +1,9 @@
 package com.example.one_percent.service;
 
 import com.example.one_percent.model.JournalEntry;
+import com.example.one_percent.config.AiSettings;
 import com.example.one_percent.repository.JournalRepository;
+import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,7 @@ class EmbeddingServiceTest {
 
     @BeforeEach
     void setUp() {
-        embeddingService = new EmbeddingService(journalRepository);
+        embeddingService = new EmbeddingService(journalRepository, new OpenAIClient(AiSettings.openAiDefaults("test-key", "http://ai.invalid/v1")));
     }
 
     @SuppressWarnings("unchecked")
@@ -71,6 +73,24 @@ class EmbeddingServiceTest {
     void cosineSimilarity_returnsZeroForMismatchedLengthsOrZeroVectors() {
         assertThat(embeddingService.cosineSimilarity(List.of(1.0, 2.0), List.of(1.0))).isZero();
         assertThat(embeddingService.cosineSimilarity(List.of(0.0, 0.0), List.of(1.0, 1.0))).isZero();
+    }
+
+    @Test
+    void themesFileIsChosenByEmbeddingModel() {
+        assertThat(EmbeddingService.themesResourceFor("text-embedding-3-small")).isEqualTo("themes/text-embedding-3-small.json");
+        // anything odd in a model name can't escape the themes folder
+        assertThat(EmbeddingService.themesResourceFor("models/../../secret")).isEqualTo("themes/models_.._.._secret.json");
+    }
+
+    @Test
+    void noThemesForAModelWithoutAThemesFile() {
+        EmbeddingService other = new EmbeddingService(journalRepository,
+                new OpenAIClient(new AiSettings("k", "http://ai.invalid/v1", "s", "f", "no-such-embedding-model", null)));
+
+        other.loadThemeEmbeddings();
+
+        assertThat(other.themeDimensions()).isZero();
+        assertThat(other.closestThemes(List.of(1.0, 0.0), 3)).isEmpty();
     }
 
     @Test

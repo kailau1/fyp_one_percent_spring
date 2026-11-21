@@ -1,18 +1,15 @@
 package com.example.one_percent.service.embedding;
 
 import com.example.one_percent.repository.JournalRepository;
+import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.model.JournalEntry;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -36,26 +33,35 @@ public class EmbeddingService {
     private final Map<String, List<Double>> themeEmbeddings = new HashMap<>();
 
     private final JournalRepository journalRepository;
+    private final OpenAIClient openAIClient;
 
-
-    @Value("${openai.api.key}")
-    private String apiKey;
-
-    /** Overridable so local runs and tests can point at a stand-in server instead of OpenAI. */
-    @Value("${openai.base-url:https://api.openai.com}")
-    private String baseUrl = "https://api.openai.com";
-
+    /**
+     * The theme vectors only make sense next to entry vectors from the same embedding model, so
+     * each model has its own file: themes/<model>.json. Generate one for a new model with
+     * `scripts/dev-run.sh --maintenance.task=generate-themes`.
+     */
+    public static String themesResourceFor(String embeddingModel) {
+        return "themes/" + embeddingModel.replaceAll("[^A-Za-z0-9._-]", "_") + ".json";
+    }
 
     @PostConstruct
     public void loadThemeEmbeddings() {
-        try (InputStream is = new ClassPathResource("themes.json").getInputStream()) {
+        String resource = themesResourceFor(openAIClient.settings().embeddingModel());
+        try (InputStream is = new ClassPathResource(resource).getInputStream()) {
             Map<String, List<Double>> loadedThemes = new ObjectMapper().readValue(is, new TypeReference<>() {
             });
             themeEmbeddings.putAll(consistentThemes(loadedThemes));
         } catch (IOException e) {
             // Loud on purpose: without themes, every entry looks "not analysed" and nothing else says why.
-            logger.error("Couldn't load themes.json: theme insights and the AI's theme context are disabled", e);
+            logger.error("No theme vectors for embedding model '{}' ({}): theme insights and the AI's theme "
+                    + "context are off. Generate them with: scripts/dev-run.sh --maintenance.task=generate-themes",
+                    openAIClient.settings().embeddingModel(), resource);
         }
+    }
+
+    /** How many numbers the theme vectors have (0 if none are loaded). Entries must match to be compared. */
+    public int themeDimensions() {
+        return themeEmbeddings.isEmpty() ? 0 : themeEmbeddings.values().iterator().next().size();
     }
 
     /**
@@ -74,37 +80,7 @@ public class EmbeddingService {
     }
 
     public List<Double> generateEmbedding(String inputText) throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        ObjectMapper mapper = new ObjectMapper();
-
-        ObjectNode payload = mapper.createObjectNode();
-        payload.put("model", "text-embedding-3-small");
-        payload.put("input", inputText); // Proper escaping done by ObjectMapper
-
-        String jsonPayload = mapper.writeValueAsString(payload);
-
-        Request request = new Request.Builder()
-                .url(baseUrl + "/v1/embeddings")
-                .addHeader("Authorization", "Bearer " + apiKey)
-                .addHeader("Content-Type", "application/json")
-                .post(RequestBody.create(jsonPayload, MediaType.parse("application/json")))
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            String responseBody = response.body().string();
-            if (!response.isSuccessful()) {
-                throw new RuntimeException("OpenAI Embedding API failed: " + responseBody);
-            }
-
-            JsonNode jsonNode = mapper.readTree(responseBody);
-            JsonNode vectorNode = jsonNode.get("data").get(0).get("embedding");
-
-            List<Double> embedding = new ArrayList<>();
-            for (JsonNode val : vectorNode) {
-                embedding.add(val.asDouble());
-            }
-            return embedding;
-        }
+        return openAIClient.embed(inputText);
     }
 
 
@@ -137,8 +113,7 @@ public class EmbeddingService {
      */
     public List<String> closestThemes(List<Double> embedding, int n) {
         if (embedding == null || embedding.isEmpty() || themeEmbeddings.isEmpty()) return List.of();
-        int dimensions = themeEmbeddings.values().iterator().next().size();
-        if (embedding.size() != dimensions) return List.of();
+        if (embedding.size() != themeDimensions()) return List.of();
         Map<String, Double> scores = new HashMap<>(); // each score once, not once per comparison
         themeEmbeddings.forEach((name, vector) -> scores.put(name, cosineSimilarity(embedding, vector)));
         return scores.entrySet().stream()

@@ -1,5 +1,6 @@
 package com.example.one_percent.service.ai;
 
+import com.example.one_percent.service.client.AiModel;
 import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.model.JournalEntry;
 import com.example.one_percent.service.journal.JournalService;
@@ -68,7 +69,7 @@ public class AiService {
 
         logger.debug("LLM request payload: {}", messages);
 
-        return openAIClient.sendChatCompletion(messages, "gpt-4o", 200, 0.7);
+        return openAIClient.sendChatCompletion(messages, AiModel.SMART, 200, 0.7);
     }
 
     public String getDailyTip() throws IOException {
@@ -98,6 +99,6 @@ public class AiService {
 
         ArrayNode messages = openAIClient.createMessages(List.of(systemMessage, userMessage));
 
-        return openAIClient.sendChatCompletion(messages, "gpt-4o-mini", 60, 0.8);
+        return openAIClient.sendChatCompletion(messages, AiModel.FAST, 60, 0.8);
     }
 }
