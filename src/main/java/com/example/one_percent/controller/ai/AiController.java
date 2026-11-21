@@ -3,7 +3,9 @@ package com.example.one_percent.controller.ai;
 import com.example.one_percent.dto.AiRequestDTO;
 import com.example.one_percent.dto.AiResponseDTO;
 import com.example.one_percent.service.ai.AiService;
+import com.example.one_percent.security.CurrentUser;
 import com.example.one_percent.service.journal.JournalService;
+import com.example.one_percent.service.tip.TipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +16,7 @@ public class AiController {
 
     private final AiService aiService;
     private final JournalService journalService;
+    private final TipService tipService;
 
     @PostMapping("/feedback")
     public AiResponseDTO getAiFeedback(@RequestBody AiRequestDTO request) throws Exception {
@@ -28,10 +31,10 @@ public class AiController {
         return new AiResponseDTO(feedback);
     }
 
+    /** One tip per calendar day (the user's own day), shared by everyone and generated once. */
     @GetMapping("/tip")
     public AiResponseDTO getTipOfTheDay() throws Exception {
-        String tip = aiService.getDailyTip();
-        return new AiResponseDTO(tip);
+        return new AiResponseDTO(tipService.getTipOfTheDay(CurrentUser.get()));
     }
 
 

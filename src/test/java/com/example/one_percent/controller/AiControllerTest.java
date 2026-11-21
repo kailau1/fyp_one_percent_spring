@@ -9,6 +9,7 @@ import com.example.one_percent.security.JwtUtil;
 import com.example.one_percent.security.SecurityConfig;
 import com.example.one_percent.service.ai.AiService;
 import com.example.one_percent.service.journal.JournalService;
+import com.example.one_percent.service.tip.TipService;
 import com.example.one_percent.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,8 @@ class AiControllerTest {
     private AiService aiService;
     @MockBean
     private JournalService journalService;
+    @MockBean
+    private TipService tipService;
     @MockBean
     private JwtUtil jwtUtil;
     @MockBean
@@ -98,6 +101,16 @@ class AiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void tipComesFromTheDailyTipStoreForTheLoggedInUser() throws Exception {
+        when(tipService.getTipOfTheDay(argThat(user -> "alice".equals(user.getId())))).thenReturn("Plan tomorrow tonight.");
+
+        mvc.perform(get("/api/ai/tip").header("Authorization", TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.response").value("Plan tomorrow tonight."));
+        verifyNoInteractions(aiService);
     }
 
     @Test
