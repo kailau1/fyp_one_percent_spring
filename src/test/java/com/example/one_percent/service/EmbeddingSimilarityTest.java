@@ -1,6 +1,8 @@
 package com.example.one_percent.service;
 
 import com.example.one_percent.model.JournalEntry;
+import com.example.one_percent.config.AiSettings;
+import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.repository.JournalRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -35,8 +37,8 @@ public class EmbeddingSimilarityTest {
 
     @BeforeEach
     void setup() {
-        embeddingService = new EmbeddingService(journalRepository);
-        ReflectionTestUtils.setField(embeddingService, "apiKey", System.getenv("OPENAI_API_KEY"));
+        embeddingService = new EmbeddingService(journalRepository,
+                new OpenAIClient(AiSettings.openAiDefaults(System.getenv("OPENAI_API_KEY"), "https://api.openai.com/v1")));
 
     }
 
@@ -59,7 +61,7 @@ public class EmbeddingSimilarityTest {
     public void testUserJournalsAgainstAllThemes() throws Exception {
         String userId = "67b8a8b5dd8b77042702f18e";
 
-        InputStream is = getClass().getClassLoader().getResourceAsStream("themes.json");
+        InputStream is = getClass().getClassLoader().getResourceAsStream("themes/text-embedding-3-small.json");
         Map<String, List<Double>> themeEmbeddings = mapper.readValue(is, new TypeReference<>() {});
 
         List<JournalEntry> userJournals = journalRepository.findByUserId(userId);

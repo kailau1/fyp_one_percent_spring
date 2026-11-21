@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-One Percent backend: Spring Boot 3.1 + MongoDB + OpenAI (Java 17, Maven).
+One Percent backend: Spring Boot 3.1 + MongoDB + an OpenAI-compatible AI API (OpenAI or Gemini; Java 17, Maven).
 The mobile frontend is a separate repo at `~/projects/one_percent_mobile` (remote `fyp_one_percent`).
 Work in this copy (`~/projects/one_percent_spring`, Linux filesystem; open it in IntelliJ via `\\wsl$\Ubuntu\home\kai\projects`).
 The old copy on `/mnt/c/Users/Kai Lau/Documents/work/one_percent_spring` is only a backup.
@@ -18,12 +18,19 @@ The old copy on `/mnt/c/Users/Kai Lau/Documents/work/one_percent_spring` is only
 
 ## Commands
 
-- Run tests: `mvn test`. They're offline unit/web-layer tests (no MongoDB or OpenAI needed).
+- Run tests: `mvn test`. They're offline unit/web-layer tests (no MongoDB or AI service needed).
 - Integration tests against the real DB and OpenAI: `RUN_INTEGRATION_TESTS=true mvn test`.
 - Run the app from WSL: `scripts/dev-run.sh`. MongoDB is installed on **Windows**, which WSL can't reach as
   `localhost`; the script points the app at the Windows host. It uses the `fyp_dev` database by default
   (dev accounts: `web-dev@onepercent.local` / `web-dev-2@onepercent.local`, password `dev-password-1`);
   `MONGO_DB=fyp scripts/dev-run.sh` uses the real data. Needs a local `application.properties` (see README).
+- AI provider: `SPRING_PROFILES_ACTIVE=gemini scripts/dev-run.sh` uses Gemini (key in local `ai.api-key`);
+  `AI_BASE_URL=http://localhost:8090/v1 scripts/dev-run.sh` uses the free e2e stand-in (`one_percent_web/e2e/openai-stub.mjs`).
+  Model names live only in `AiSettings`/`application-*.properties`; code asks for `AiModel.SMART` or `AiModel.FAST`.
+  After changing the embedding model: `--maintenance.task=generate-themes`, then `--maintenance.task=reembed`.
+- Themes are defined by example entries in `src/main/resources/themes/definitions.json`. After editing it:
+  `--maintenance.task=generate-themes` (commit the vectors file), `--maintenance.task=retag`, then the opt-in quality
+  check `RUN_INTEGRATION_TESTS=true mvn -Dtest=ThemeQualityIT test` (keep ≥ 90%). Never reuse its test entries as examples.
 
 ## Conventions
 

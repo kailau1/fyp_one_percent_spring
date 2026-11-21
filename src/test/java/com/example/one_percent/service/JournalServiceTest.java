@@ -397,4 +397,69 @@ class JournalServiceTest {
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
+
+    // ---- themes ----
+
+    @Test
+    void createJournalEntry_tagsTheEntryWithThemes() throws IOException {
+        when(embeddingService.generateEmbedding(anyString())).thenReturn(List.of(1.0));
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(embeddingService.effectiveThemes(any())).thenReturn(List.of("procrastination"));
+        when(embeddingService.themeNames()).thenReturn(List.of("burnout", "procrastination"));
+
+        JournalEntryDTO dto = journalService.createJournalEntry(JournalEntryDTO.builder().title("t").content("c").build());
+
+        verify(embeddingService).tag(any(JournalEntry.class));
+        assertThat(dto.getThemes()).containsExactly("procrastination");
+        assertThat(dto.getThemeChoices()).containsExactly("burnout", "procrastination");
+    }
+
+    @Test
+    void setThemes_storesTheUsersChoicesAsCorrectionsToTheAutomaticTags() {
+        JournalEntry mine = entry("j1", ALICE);
+        storeInDb(mine);
+        when(embeddingService.themeNames()).thenReturn(List.of("anxiety", "burnout", "gratitude"));
+        when(embeddingService.automaticThemes(mine)).thenReturn(List.of("anxiety", "burnout"));
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        journalService.setThemes("j1", List.of("anxiety", "gratitude", "gratitude"));
+
+        assertThat(mine.getThemeOverrides().getAdded()).containsExactly("gratitude");
+        assertThat(mine.getThemeOverrides().getRemoved()).containsExactly("burnout");
+        verify(journalRepository).save(mine);
+    }
+
+    @Test
+    void setThemes_matchingTheAutomaticTagsClearsTheCorrections() {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setThemeOverrides(new JournalEntry.ThemeOverrides(List.of("gratitude"), List.of()));
+        storeInDb(mine);
+        when(embeddingService.themeNames()).thenReturn(List.of("anxiety", "gratitude"));
+        when(embeddingService.automaticThemes(mine)).thenReturn(List.of("anxiety"));
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        journalService.setThemes("j1", List.of("anxiety"));
+
+        assertThat(mine.getThemeOverrides()).isNull();
+    }
+
+    @Test
+    void setThemes_rejectsThemesThatDontExist() {
+        storeInDb(entry("j1", ALICE));
+        when(embeddingService.themeNames()).thenReturn(List.of("anxiety"));
+
+        assertThatThrownBy(() -> journalService.setThemes("j1", List.of("anxiety", "made-up")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("made-up");
+        verify(journalRepository, never()).save(any());
+    }
+
+    @Test
+    void setThemes_onAnotherUsersEntryIsNotFound() {
+        storeInDb(entry("j2", BOB));
+
+        assertThatThrownBy(() -> journalService.setThemes("j2", List.of()))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(journalRepository, never()).save(any());
+    }
 }

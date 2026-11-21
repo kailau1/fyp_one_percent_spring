@@ -1,0 +1,179 @@
+{
+  "_about": "Edit to change what each theme means: an entry is matched to the themes whose examples it most resembles. After editing, regenerate the vectors: scripts/dev-run.sh --maintenance.task=generate-themes (then commit the file it writes). 'everyday' entries have no theme; they set the threshold below which an entry gets no theme. Keep examples varied: short and long, direct and implied, in a journal's first-person voice.",
+  "themes": [
+    {
+      "name": "anxiety",
+      "meaning": "Worry, dread or nerves about what might happen.",
+      "examples": [
+        "Couldn't sleep, my mind kept replaying everything that could go wrong tomorrow.",
+        "Heart racing before the presentation, hands shaking. I kept thinking I'd forget everything.",
+        "Felt on edge all day for no reason. Checked my phone constantly waiting for bad news.",
+        "Worried about money again. Kept running the numbers over and over in my head.",
+        "I had a knot in my stomach the whole commute thinking about the email from my manager.",
+        "What if I fail the exam, what if I lose the place, what if everyone sees. The what-ifs won't stop.",
+        "My partner was an hour late home and didn't answer his phone. I'd imagined every possible accident before he walked in.",
+        "Results day is Thursday. Keep checking the website even though I know they're not out yet.",
+        "Sunday evenings are the worst. Feel dread creeping in about the week before it's even started.",
+        "Had to make a phone call to the council and rehearsed it for twenty minutes first. Voice still shook."
+      ]
+    },
+    {
+      "name": "burnout",
+      "meaning": "Running on empty: exhausted, numb, and losing interest in things that used to matter.",
+      "examples": [
+        "I'm exhausted all the time. Even things I used to enjoy feel like chores.",
+        "Worked late every night this month. I don't feel stressed anymore, just empty.",
+        "Took a day off but couldn't rest. My brain just felt numb and flat.",
+        "I keep going through the motions at work. Nothing feels like it matters.",
+        "Cried in the car before work. I've got nothing left in the tank.",
+        "Weekend came and I slept most of it and still feel drained.",
+        "Looked at my calendar for next week and just closed the laptop. There's no gap anywhere, and I can't remember the last evening I had to myself.",
+        "Made a mistake at work I'd never normally make. I'm so tired I'm not thinking straight anymore.",
+        "Everyone says take a break, but even breaks feel like another thing to organise.",
+        "Snapped at a colleague, forgot to eat lunch, fell asleep on the sofa at 8. That's most days now."
+      ]
+    },
+    {
+      "name": "confidence",
+      "meaning": "Trusting yourself and acting on it.",
+      "examples": [
+        "Led the meeting today and it went really well. I trusted my judgement and it paid off.",
+        "I asked for the raise and got it. I'm proud I backed myself.",
+        "Gave my first talk and actually enjoyed it. I felt like I knew my stuff.",
+        "Stood my ground in a disagreement calmly. I'm more sure of myself than I used to be.",
+        "Signed up for the half marathon. A year ago I wouldn't have believed I could.",
+        "Shared my writing publicly for the first time and felt good about it, whatever people think.",
+        "Sent my portfolio to the agency I've always wanted to work with. Old me would have waited until it was 'ready'.",
+        "Spoke to the new neighbours and introduced myself. Small, but it used to terrify me.",
+        "Told my manager I disagreed with the plan and explained why. She actually changed it.",
+        "Looked in the mirror before the date and thought, you know what, I look good."
+      ]
+    },
+    {
+      "name": "discipline",
+      "meaning": "Doing what you planned even when you don't feel like it.",
+      "examples": [
+        "Didn't feel like training but went anyway. Five weeks without missing a session now.",
+        "Kept to my rule of no phone before 9am. The mornings feel so much calmer.",
+        "Did my 30 minutes of revision even though I was tired. Showing up is what counts.",
+        "Stuck to my budget this week for the first time. Took effort to say no to takeaways.",
+        "Woke up at 6 again. The routine is starting to feel automatic rather than forced.",
+        "I set myself a schedule for the week and actually followed it, even the boring bits.",
+        "No caffeine after 2pm for a month now. Annoying some afternoons but I'm sleeping better.",
+        "Same routine: write 500 words before breakfast, every day, even the ones where the words are rubbish.",
+        "Wanted to skip physio exercises tonight but did them anyway in front of the telly.",
+        "Day 60 of learning Spanish on the train. Some sessions are five minutes but I haven't missed one."
+      ]
+    },
+    {
+      "name": "emotional regulation",
+      "meaning": "Noticing strong feelings and choosing how to respond to them.",
+      "examples": [
+        "Felt the anger rising when he interrupted me, so I took a breath before replying. It helped.",
+        "I was close to snapping at my sister but went for a walk first and came back calmer.",
+        "Noticed I was spiralling, named the feeling, and let it pass instead of reacting.",
+        "Lost my temper at the kids today and felt awful. Trying to work out what set me off.",
+        "Used the breathing exercise when I got overwhelmed in the shop. It took the edge off.",
+        "My mood swung from fine to furious in seconds. I want to understand what triggers it.",
+        "Got a nasty email and started typing a furious reply. Saved it as a draft, went for a run, and sent something calm an hour later.",
+        "Felt panic rising in the queue so I named five things I could see. It passed.",
+        "I went quiet and sulked all evening instead of saying I was hurt. Want to handle that better next time.",
+        "Noticed I get irritable when I'm hungry. Ate something before replying to mum this time and it went much better."
+      ]
+    },
+    {
+      "name": "gratitude",
+      "meaning": "Noticing and appreciating the good things and people in your life.",
+      "examples": [
+        "Grateful for my mum's phone call this morning. Small thing but it made my whole day lighter.",
+        "Three things I'm thankful for: a hot shower, my friend's terrible jokes, and the quiet walk home.",
+        "Noticed how lucky I am to have a warm flat and food in the fridge. Easy to forget.",
+        "My colleague covered for me when I was ill and I realised how much I appreciate the people around me.",
+        "Sat in the park and just felt thankful to be healthy and here.",
+        "Really appreciated my partner cooking dinner tonight without me asking.",
+        "Long, rough week, but my brother turned up with pizza and we watched rubbish films until midnight. Exactly what I needed.",
+        "The nurse who looked after dad was so gentle with him. I keep thinking about how much that meant.",
+        "Woke up early and watched the sunrise from the kitchen window. Felt like a gift.",
+        "My old teacher replied to my message and said she remembered me. Made me so happy."
+      ]
+    },
+    {
+      "name": "motivation",
+      "meaning": "The drive to work towards something, or the struggle to find it.",
+      "examples": [
+        "Feeling really fired up about my new project. I can't wait to get started tomorrow.",
+        "Lost all drive this week. I know what I want but can't make myself care.",
+        "Reminded myself why I started and it gave me a burst of energy to keep going.",
+        "Some days I'm buzzing with ideas, other days I can't get off the sofa.",
+        "Watching my progress chart go up is keeping me going.",
+        "I've lost sight of why I'm doing this course. Need to find my reason again.",
+        "Ran my first 10k and immediately looked up half marathons. I want to see what else I can do.",
+        "Wrote down my goals for the year and they feel like someone else's. Not sure what I'm working towards anymore.",
+        "Finally found a reason to save: the trip to Japan. Suddenly cutting back feels easy.",
+        "I keep starting things with loads of energy and dropping them after two weeks."
+      ]
+    },
+    {
+      "name": "perfectionism",
+      "meaning": "Holding yourself to a standard where anything less than perfect feels like failure.",
+      "examples": [
+        "Spent three hours on one slide because the alignment didn't look right.",
+        "Got 92 percent and all I can think about is the 8 percent I lost.",
+        "I won't post anything until it's flawless, so I've posted nothing in months.",
+        "Rewrote the opening paragraph ten times and still hate it.",
+        "Missed the deadline because I kept polishing something that was already good enough.",
+        "If it isn't perfect I feel like I've failed, even when everyone else says it's great.",
+        "Spent the whole weekend re-recording one song because of a tiny wobble in the second verse that nobody else can hear.",
+        "Haven't started the blog because I can't decide on the perfect name and design.",
+        "The cake tasted great but it leaned slightly so I didn't take it to the party.",
+        "My manager said the report was excellent. I only see the typo I found after sending it."
+      ]
+    },
+    {
+      "name": "procrastination",
+      "meaning": "Putting off something that matters, often by doing easier things instead.",
+      "examples": [
+        "Spent the whole afternoon tidying my desk and reorganising files instead of starting the essay.",
+        "I said I'd begin at 10, then 11, then after lunch. It's 9pm and I haven't opened the document.",
+        "Watched three episodes 'as a break' before even starting. The deadline is tomorrow and I feel sick about it.",
+        "Every time I sit down to do my tax return I suddenly need to do something else first.",
+        "I keep putting off calling the dentist. It's a two-minute call and it's been on my list for a month.",
+        "Left the assignment until the night before again and pulled an all-nighter. Swore I wouldn't do that this time.",
+        "Cleaned the oven for the first time in a year. The CV is still exactly where I left it on Monday.",
+        "Kept telling myself I'd start the revision once I'd had a coffee, then once I'd checked my emails, then once the washing was out. Now it's dark and I've done none of it, and I'm annoyed at myself all over again.",
+        "My plan for the morning was the budget spreadsheet. I made a to-do list for the spreadsheet instead.",
+        "Renewing my passport has been on the list since spring. The trip is in three weeks."
+      ]
+    },
+    {
+      "name": "self-doubt",
+      "meaning": "Doubting your own ability or worth, even when things go well.",
+      "examples": [
+        "Got the job offer but I keep thinking they made a mistake and will realise I'm not good enough.",
+        "I didn't speak up in the meeting because I was sure my idea was stupid. Someone else said the same thing and got praised.",
+        "Everyone on my course seems to understand this except me. Maybe I'm just not cut out for it.",
+        "I rewrote the text to my friend four times because I was worried it sounded wrong.",
+        "Even when people compliment my work I assume they're just being nice.",
+        "Felt like a fraud presenting today, like any minute someone would expose that I don't know what I'm doing.",
+        "Got invited to speak at the conference and my first thought was that they must be short of speakers.",
+        "My friends say I'm a great cook but I always assume they're being polite. Didn't offer to host this time.",
+        "Started a new job last week and I'm sure they're already regretting hiring me. Everyone seems to know so much more.",
+        "Deleted the email to the professor three times. Who am I to ask for a research placement."
+      ]
+    }
+  ],
+  "everyday": [
+    "Did the weekly shop, put a wash on, and made a stir fry for tea.",
+    "Dentist at 10, then back to work. Rained most of the afternoon.",
+    "Watched the new series everyone's talking about. It was alright.",
+    "Moved my desk to the other side of the room. Looks bigger now.",
+    "Picked up a parcel from the post office and walked the long way home.",
+    "Had leftovers for lunch. Meeting about the Q3 numbers went on for an hour.",
+    "Changed the bedsheets, hoovered, and sorted the recycling.",
+    "Got the car serviced. Needs new tyres in the spring apparently.",
+    "Booked a table for Saturday at the Italian place on the high street.",
+    "Bus was busy. Finished my podcast episode about ancient Rome.",
+    "Planted some tulip bulbs in the front garden and fixed the gate latch.",
+    "Ordered a new phone case and updated my laptop."
+  ]
+}

@@ -18,8 +18,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import java.util.List;
+import org.springframework.http.MediaType;
 
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -145,6 +148,38 @@ class JournalControllerTest {
         mvc.perform(get("/api/journals/entry/j1").header("Authorization", TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.createdAt").value("2026-11-14T09:30:00.123Z"));
+    }
+
+    @Test
+    void setsAnEntrysThemes() throws Exception {
+        when(journalService.setThemes("j1", List.of("anxiety", "gratitude")))
+                .thenReturn(JournalEntryDTO.builder().id("j1").themes(List.of("anxiety", "gratitude")).build());
+
+        mvc.perform(put("/api/journals/entry/j1/themes").header("Authorization", TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"themes\":[\"anxiety\",\"gratitude\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.themes[1]").value("gratitude"));
+    }
+
+    @Test
+    void settingAnUnknownThemeIs400AndAnotherUsersEntryIs404() throws Exception {
+        when(journalService.setThemes("j1", List.of("made-up"))).thenThrow(new IllegalArgumentException("Unknown theme: made-up."));
+        when(journalService.setThemes("bobs", List.of())).thenThrow(new ResourceNotFoundException("Journal entry not found: bobs"));
+
+        mvc.perform(put("/api/journals/entry/j1/themes").header("Authorization", TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"themes\":[\"made-up\"]}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/api/journals/entry/bobs/themes").header("Authorization", TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"themes\":[]}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void settingThemesRequiresLogin() throws Exception {
+        mvc.perform(put("/api/journals/entry/j1/themes").contentType(MediaType.APPLICATION_JSON).content("{\"themes\":[]}"))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(journalService);
     }
 
     @Test

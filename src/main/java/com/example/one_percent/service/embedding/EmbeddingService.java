@@ -1,18 +1,13 @@
 package com.example.one_percent.service.embedding;
 
 import com.example.one_percent.repository.JournalRepository;
+import com.example.one_percent.service.client.OpenAIClient;
 import com.example.one_percent.model.JournalEntry;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +16,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Objects;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,31 +28,69 @@ public class EmbeddingService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmbeddingService.class);
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    /** How many themes an entry is tagged with, at most. */
+    public static final int MAX_THEMES_PER_ENTRY = 3;
+    /** Used when a vectors file has no calibrated margin. */
+    static final double DEFAULT_SECONDARY_MARGIN = 0.02;
 
     private final Map<String, List<Double>> themeEmbeddings = new HashMap<>();
+    private final ThemeDefinitions definitions = ThemeDefinitions.load();
+    /** null for legacy vectors (no calibration): then every comparable entry gets its 3 closest themes. */
+    private Double minSimilarity;
+    private double secondaryMargin = DEFAULT_SECONDARY_MARGIN;
+    /** Identifies the loaded vectors; stored with each entry's tags so stale tags can be spotted. */
+    private String themesVersion;
 
     private final JournalRepository journalRepository;
+    private final OpenAIClient openAIClient;
 
-
-    @Value("${openai.api.key}")
-    private String apiKey;
-
-    /** Overridable so local runs and tests can point at a stand-in server instead of OpenAI. */
-    @Value("${openai.base-url:https://api.openai.com}")
-    private String baseUrl = "https://api.openai.com";
-
+    /**
+     * The theme vectors only make sense next to entry vectors from the same embedding model and
+     * size, so each has its own file: themes/<model>[-<dims>].json. Make one for a new model with
+     * `scripts/dev-run.sh --maintenance.task=generate-themes`.
+     */
+    public static String themesResourceFor(String embeddingModel, Integer dimensions) {
+        String name = embeddingModel.replaceAll("[^A-Za-z0-9._-]", "_") + (dimensions != null ? "-" + dimensions : "");
+        return "themes/" + name + ".json";
+    }
 
     @PostConstruct
     public void loadThemeEmbeddings() {
-        try (InputStream is = new ClassPathResource("themes.json").getInputStream()) {
-            Map<String, List<Double>> loadedThemes = new ObjectMapper().readValue(is, new TypeReference<>() {
-            });
-            themeEmbeddings.putAll(consistentThemes(loadedThemes));
+        String resource = themesResourceFor(openAIClient.settings().embeddingModel(), openAIClient.settings().embeddingDimensions());
+        try (InputStream is = new ClassPathResource(resource).getInputStream()) {
+            useVectors(ThemeVectors.read(is), resource);
         } catch (IOException e) {
             // Loud on purpose: without themes, every entry looks "not analysed" and nothing else says why.
-            logger.error("Couldn't load themes.json: theme insights and the AI's theme context are disabled", e);
+            logger.error("No theme vectors for embedding model '{}' ({}): theme insights and the AI's theme "
+                    + "context are off. Generate them with: scripts/dev-run.sh --maintenance.task=generate-themes",
+                    openAIClient.settings().embeddingModel(), resource);
         }
+    }
+
+    /** Switches to a set of theme vectors (also used by tests and the maintenance tasks). */
+    public void useVectors(ThemeVectors vectors, String source) {
+        themeEmbeddings.clear();
+        themeEmbeddings.putAll(consistentThemes(vectors.themes()));
+        minSimilarity = vectors.minSimilarity();
+        secondaryMargin = vectors.secondaryMargin() != null ? vectors.secondaryMargin() : DEFAULT_SECONDARY_MARGIN;
+        themesVersion = source + ":" + (vectors.isLegacy() ? "legacy" : vectors.definitionsHash());
+        if (!vectors.isLegacy() && !definitions.hash().equals(vectors.definitionsHash())) {
+            logger.warn("{} was generated from older theme definitions; regenerate it with "
+                    + "--maintenance.task=generate-themes to pick up the changes", source);
+        }
+    }
+
+    public ThemeDefinitions definitions() {
+        return definitions;
+    }
+
+    /** The names an entry can be tagged with (for pickers). */
+    public List<String> themeNames() {
+        return definitions.names();
+    }
+
+    public String themesVersion() {
+        return themesVersion;
     }
 
     /**
@@ -73,38 +108,13 @@ public class EmbeddingService {
         return kept;
     }
 
+    /** How many numbers the theme vectors have (0 if none are loaded). Entries must match to be compared. */
+    public int themeDimensions() {
+        return themeEmbeddings.isEmpty() ? 0 : themeEmbeddings.values().iterator().next().size();
+    }
+
     public List<Double> generateEmbedding(String inputText) throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        ObjectMapper mapper = new ObjectMapper();
-
-        ObjectNode payload = mapper.createObjectNode();
-        payload.put("model", "text-embedding-3-small");
-        payload.put("input", inputText); // Proper escaping done by ObjectMapper
-
-        String jsonPayload = mapper.writeValueAsString(payload);
-
-        Request request = new Request.Builder()
-                .url(baseUrl + "/v1/embeddings")
-                .addHeader("Authorization", "Bearer " + apiKey)
-                .addHeader("Content-Type", "application/json")
-                .post(RequestBody.create(jsonPayload, MediaType.parse("application/json")))
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            String responseBody = response.body().string();
-            if (!response.isSuccessful()) {
-                throw new RuntimeException("OpenAI Embedding API failed: " + responseBody);
-            }
-
-            JsonNode jsonNode = mapper.readTree(responseBody);
-            JsonNode vectorNode = jsonNode.get("data").get(0).get("embedding");
-
-            List<Double> embedding = new ArrayList<>();
-            for (JsonNode val : vectorNode) {
-                embedding.add(val.asDouble());
-            }
-            return embedding;
-        }
+        return openAIClient.embed(inputText);
     }
 
 
@@ -126,29 +136,77 @@ public class EmbeddingService {
         return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
     }
 
-    /** How many themes each entry counts towards. */
-    public static final int THEMES_PER_ENTRY = 3;
-
     /**
-     * The `n` themes closest to an entry's embedding, closest first. Empty when the embedding is
-     * missing or can't be compared with the theme vectors (a different length means a different
-     * model, e.g. one made by a local stand-in): those entries simply aren't analysed, rather than
-     * being given three arbitrary themes.
+     * The themes an embedding is clearly about, best first, with their scores. With calibrated
+     * vectors: the best theme if it reaches minSimilarity, plus up to two more that also reach it and
+     * are within secondaryMargin of the best. Everyday entries get none. With legacy vectors: the three
+     * closest. Empty when the embedding is missing or from another model (a different length).
      */
-    public List<String> closestThemes(List<Double> embedding, int n) {
-        if (embedding == null || embedding.isEmpty() || themeEmbeddings.isEmpty()) return List.of();
-        int dimensions = themeEmbeddings.values().iterator().next().size();
-        if (embedding.size() != dimensions) return List.of();
-        Map<String, Double> scores = new HashMap<>(); // each score once, not once per comparison
-        themeEmbeddings.forEach((name, vector) -> scores.put(name, cosineSimilarity(embedding, vector)));
-        return scores.entrySet().stream()
+    public LinkedHashMap<String, Double> tagThemes(List<Double> embedding) {
+        LinkedHashMap<String, Double> tags = new LinkedHashMap<>();
+        if (embedding == null || embedding.isEmpty() || themeEmbeddings.isEmpty()) return tags;
+        if (embedding.size() != themeDimensions()) return tags;
+
+        List<Map.Entry<String, Double>> ranked = themeEmbeddings.entrySet().stream()
+                .map(theme -> Map.entry(theme.getKey(), cosineSimilarity(embedding, theme.getValue())))
                 .sorted(Map.Entry.<String, Double>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
-                .limit(n)
-                .map(Map.Entry::getKey)
                 .toList();
+        double best = ranked.get(0).getValue();
+        for (Map.Entry<String, Double> theme : ranked) {
+            if (tags.size() == MAX_THEMES_PER_ENTRY) break;
+            boolean keep = minSimilarity == null
+                    || (theme.getValue() >= minSimilarity && best - theme.getValue() <= secondaryMargin);
+            if (!keep) break; // ranked best first, so nothing further qualifies
+            tags.put(theme.getKey(), theme.getValue());
+        }
+        return tags;
     }
 
-    /** Entries grouped by theme: each analysed entry counts towards its THEMES_PER_ENTRY closest themes. */
+    /** Stores the entry's automatic tags (call after its embedding changes). */
+    public void tag(JournalEntry entry) {
+        LinkedHashMap<String, Double> tags = tagThemes(entry.getContentEmbedding());
+        boolean comparable = entry.getContentEmbedding() != null && entry.getContentEmbedding().size() == themeDimensions();
+        entry.setThemeScores(comparable ? tags : null);
+        entry.setThemesVersion(comparable ? themesVersion : null);
+    }
+
+    /** The automatic tags: stored ones if made with the current vectors, otherwise worked out again. */
+    public List<String> automaticThemes(JournalEntry entry) {
+        boolean current = entry.getThemeScores() != null && Objects.equals(entry.getThemesVersion(), themesVersion);
+        if (current || entry.getContentEmbedding() == null) {
+            if (entry.getThemeScores() == null) return List.of();
+            return entry.getThemeScores().entrySet().stream()
+                    .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                    .map(Map.Entry::getKey)
+                    .toList();
+        }
+        return List.copyOf(tagThemes(entry.getContentEmbedding()).keySet());
+    }
+
+    /** The themes that count: the automatic ones, minus any the user removed, plus any they added. */
+    public List<String> effectiveThemes(JournalEntry entry) {
+        List<String> themes = new ArrayList<>(automaticThemes(entry));
+        JournalEntry.ThemeOverrides overrides = entry.getThemeOverrides();
+        if (overrides != null) {
+            if (overrides.getRemoved() != null) themes.removeAll(overrides.getRemoved());
+            if (overrides.getAdded() != null) {
+                overrides.getAdded().stream().filter(theme -> !themes.contains(theme)).forEach(themes::add);
+            }
+        }
+        return themes;
+    }
+
+    /** Whether the entry's themes are known: it could be compared with the themes, or the user tagged it. */
+    private boolean isAnalysed(JournalEntry entry) {
+        boolean comparable = entry.getContentEmbedding() != null
+                ? entry.getContentEmbedding().size() == themeDimensions() && themeDimensions() > 0
+                : Objects.equals(entry.getThemesVersion(), themesVersion) && themesVersion != null;
+        boolean userTagged = entry.getThemeOverrides() != null && entry.getThemeOverrides().getAdded() != null
+                && !entry.getThemeOverrides().getAdded().isEmpty();
+        return comparable || userTagged;
+    }
+
+    /** Entries grouped by theme: each analysed entry counts towards each of its (effective) themes. */
     public record ThemeGroups(int analysedEntries, List<ThemeGroup> themes) {
     }
 
@@ -159,16 +217,15 @@ public class EmbeddingService {
     /**
      * The one place that decides which themes a set of entries is about: the insights page and the
      * AI's "the user often writes about" context both read it, so they can't disagree. Themes come
-     * most common first (ties by name); entries without a usable embedding aren't analysed.
+     * most common first (ties by name). An analysed entry may have no themes (an everyday entry).
      */
     public ThemeGroups groupByTheme(List<JournalEntry> entries) {
         Map<String, List<JournalEntry>> byTheme = new HashMap<>();
         int analysed = 0;
         for (JournalEntry entry : entries) {
-            List<String> themes = closestThemes(entry.getContentEmbedding(), THEMES_PER_ENTRY);
-            if (themes.isEmpty()) continue;
+            if (!isAnalysed(entry)) continue;
             analysed++;
-            for (String theme : themes) {
+            for (String theme : effectiveThemes(entry)) {
                 byTheme.computeIfAbsent(theme, t -> new ArrayList<>()).add(entry);
             }
         }
