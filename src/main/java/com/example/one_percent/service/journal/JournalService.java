@@ -1,6 +1,7 @@
 package com.example.one_percent.service.journal;
 
 import com.example.one_percent.dto.JournalEntryDTO;
+import com.example.one_percent.dto.PageDTO;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.JournalEntryMapper;
 import com.example.one_percent.model.JournalEntry;
@@ -12,11 +13,15 @@ import com.example.one_percent.util.UserClock;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,6 +57,60 @@ public class JournalService {
         User user = getAuthenticatedUser();
         return journalRepository.findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found: " + id));
+    }
+
+    /** The most entries one page may hold. */
+    public static final int MAX_PAGE_SIZE = 100;
+    /** Longest search text accepted: plenty for a phrase, and keeps a regex scan cheap. */
+    public static final int MAX_QUERY_LENGTH = 200;
+    /** Widest range GET /api/journals/days answers in one request (two years). */
+    public static final int MAX_DAYS_RANGE = 731;
+
+    /**
+     * One page of the user's entries, newest first, optionally only those whose title or text
+     * contains `query` (case-insensitive).
+     */
+    public PageDTO<JournalEntryDTO> searchJournals(String query, int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("'page' can't be negative.");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("'size' must be between 1 and " + MAX_PAGE_SIZE + ".");
+        }
+        if (query != null && query.length() > MAX_QUERY_LENGTH) {
+            throw new IllegalArgumentException("Search text can be at most " + MAX_QUERY_LENGTH + " characters.");
+        }
+        User user = getAuthenticatedUser();
+        return PageDTO.of(journalRepository.searchByUser(user.getId(), query, PageRequest.of(page, size)), journalMapper::toDto);
+    }
+
+    /**
+     * The days (in the user's time zone) on which they wrote at least one entry, between `from`
+     * and `to` inclusive, oldest first. Defaults to the last year. Lets a calendar or streak view
+     * show writing activity without downloading every entry.
+     */
+    public List<LocalDate> getDaysWithEntries(LocalDate from, LocalDate to) {
+        User user = getAuthenticatedUser();
+        ZoneId zone = userClock.zoneOf(user);
+        if ((from != null && (from.getYear() < 1900 || from.getYear() > 9999))
+                || (to != null && (to.getYear() < 1900 || to.getYear() > 9999))) {
+            throw new IllegalArgumentException("Dates must be between the years 1900 and 9999.");
+        }
+        LocalDate end = to != null ? to : userClock.today(user);
+        LocalDate start = from != null ? from : end.minusYears(1);
+        if (start.isAfter(end)) {
+            throw new IllegalArgumentException("'from' must not be after 'to'.");
+        }
+        if (ChronoUnit.DAYS.between(start, end) > MAX_DAYS_RANGE) {
+            throw new IllegalArgumentException("Ask for at most " + MAX_DAYS_RANGE + " days at a time.");
+        }
+        return journalRepository
+                .findCreatedAtBetween(user.getId(), start.atStartOfDay(zone).toInstant(), end.plusDays(1).atStartOfDay(zone).toInstant())
+                .stream()
+                .map(instant -> LocalDate.ofInstant(instant, zone))
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     public List<JournalEntryDTO> getJournalsByAuthenticatedUser() {
@@ -101,9 +160,24 @@ public class JournalService {
 
     public JournalEntryDTO updateJournalEntry(JournalEntryDTO entryDTO) {
         JournalEntry journalToUpdate = getOwnedJournalEntry(entryDTO.getId());
+        boolean contentChanged = !java.util.Objects.equals(journalToUpdate.getContent(), entryDTO.getContent());
         journalToUpdate.setTitle(entryDTO.getTitle());
         journalToUpdate.setContent(entryDTO.getContent());
         journalToUpdate.setLlmResponse(entryDTO.getLlmResponse());
+
+        // Re-embed edited text so themes and "similar past entries" follow what the entry now says.
+        // Best effort, as on create: if OpenAI is unavailable the edit is still saved, and the stale
+        // embedding is dropped rather than kept describing text that's gone.
+        if (contentChanged && (entryDTO.getContent() == null || entryDTO.getContent().isBlank())) {
+            journalToUpdate.setContentEmbedding(null); // nothing to describe, and no point paying OpenAI to say so
+        } else if (contentChanged) {
+            try {
+                journalToUpdate.setContentEmbedding(embeddingService.generateEmbedding(journalToUpdate.getContent()));
+            } catch (IOException | RuntimeException e) {
+                logger.warn("Saving edited journal entry without an embedding: {}", e.getMessage());
+                journalToUpdate.setContentEmbedding(null);
+            }
+        }
 
         return journalMapper.toDto(journalRepository.save(journalToUpdate));
     }

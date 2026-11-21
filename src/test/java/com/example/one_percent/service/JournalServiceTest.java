@@ -1,18 +1,19 @@
 package com.example.one_percent.service;
 
 import com.example.one_percent.dto.JournalEntryDTO;
+import com.example.one_percent.dto.PageDTO;
 import com.example.one_percent.exception.ResourceNotFoundException;
 import com.example.one_percent.mapper.JournalEntryMapper;
 import com.example.one_percent.model.JournalEntry;
+import com.example.one_percent.model.User;
 import com.example.one_percent.repository.JournalRepository;
 import com.example.one_percent.service.ai.SummaryService;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import com.example.one_percent.service.journal.JournalService;
 import com.example.one_percent.support.TestAuth;
-import org.junit.jupiter.api.AfterEach;
 import com.example.one_percent.util.UserClock;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import java.time.Clock;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,8 +21,14 @@ import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -228,6 +235,64 @@ class JournalServiceTest {
     }
 
     @Test
+    void updateJournalEntry_reEmbedsEditedText() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("old text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(embeddingService.generateEmbedding("new text")).thenReturn(List.of(0.9));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("t").content("new text").build());
+
+        assertThat(mine.getContentEmbedding()).containsExactly(0.9);
+    }
+
+    @Test
+    void updateJournalEntry_keepsTheEmbeddingWhenOnlyTheTitleChanges() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("same text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("Renamed").content("same text").build());
+
+        assertThat(mine.getContentEmbedding()).containsExactly(0.1);
+        verify(embeddingService, never()).generateEmbedding(anyString());
+    }
+
+    @Test
+    void updateJournalEntry_doesntAskOpenAiToEmbedEmptyText() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("old text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("t").content("  ").build());
+
+        assertThat(mine.getContentEmbedding()).isNull();
+        verify(embeddingService, never()).generateEmbedding(any());
+    }
+
+    @Test
+    void updateJournalEntry_savesTheEditEvenWhenEmbeddingFails() throws IOException {
+        JournalEntry mine = entry("j1", ALICE);
+        mine.setContent("old text");
+        mine.setContentEmbedding(List.of(0.1));
+        storeInDb(mine);
+        when(journalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(embeddingService.generateEmbedding("new text")).thenThrow(new IOException("OpenAI down"));
+
+        journalService.updateJournalEntry(JournalEntryDTO.builder().id("j1").title("t").content("new text").build());
+
+        assertThat(mine.getContent()).isEqualTo("new text");
+        assertThat(mine.getContentEmbedding()).isNull(); // the old one described text that's gone
+        verify(journalRepository).save(mine);
+    }
+
+    @Test
     void addResponse_storesFeedbackAndSummaryOnOwnedEntry() throws IOException {
         JournalEntry mine = entry("j1", ALICE);
         storeInDb(mine);
@@ -249,5 +314,87 @@ class JournalServiceTest {
         assertThat(draft.getUserId()).isEqualTo(ALICE);
         assertThat(draft.getContentEmbedding()).containsExactly(0.5);
         verify(journalRepository, never()).save(any());
+    }
+
+    @Nested
+    class SearchAndDays {
+
+        @Test
+        void searchReturnsOnePageOfTheUsersEntries() {
+            JournalEntry entry = new JournalEntry();
+            entry.setId("j1");
+            entry.setTitle("Morning");
+            when(journalRepository.searchByUser(ALICE, "walk", PageRequest.of(1, 2)))
+                    .thenReturn(new PageImpl<>(List.of(entry), PageRequest.of(1, 2), 5));
+
+            PageDTO<JournalEntryDTO> page = journalService.searchJournals("walk", 1, 2);
+
+            assertThat(page.getItems()).extracting(JournalEntryDTO::getId).containsExactly("j1");
+            assertThat(page.getPage()).isEqualTo(1);
+            assertThat(page.getTotalItems()).isEqualTo(5);
+            assertThat(page.getTotalPages()).isEqualTo(3);
+            assertThat(page.isHasNext()).isTrue();
+        }
+
+        @Test
+        void searchRejectsBadPaging() {
+            assertThatThrownBy(() -> journalService.searchJournals(null, -1, 20)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.searchJournals(null, 0, 0)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.searchJournals(null, 0, JournalService.MAX_PAGE_SIZE + 1))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.searchJournals("x".repeat(JournalService.MAX_QUERY_LENGTH + 1), 0, 20))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(journalRepository, never()).searchByUser(any(), any(), any());
+        }
+
+        @Test
+        void daysAreCountedInTheUsersTimeZone() {
+            // 03:00 UTC on 15 Nov is still the 14th in New York; 23:30 UTC on the 15th is the 15th there
+            User alice = TestAuth.loginAs(ALICE);
+            alice.setTimeZone("America/New_York");
+            JournalService service = new JournalService(journalRepository, mapper, summaryService, embeddingService,
+                    new UserClock(Clock.fixed(Instant.parse("2026-11-20T12:00:00Z"), ZoneOffset.UTC)));
+            Instant from = Instant.parse("2026-11-14T05:00:00Z"); // midnight on the 14th in New York
+            Instant to = Instant.parse("2026-11-16T05:00:00Z");   // midnight starting the 16th
+            when(journalRepository.findCreatedAtBetween(ALICE, from, to)).thenReturn(List.of(
+                    Instant.parse("2026-11-15T23:30:00Z"),
+                    Instant.parse("2026-11-15T03:00:00Z"),
+                    Instant.parse("2026-11-14T15:00:00Z")));
+
+            List<LocalDate> days = service.getDaysWithEntries(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15));
+
+            assertThat(days).containsExactly(LocalDate.of(2026, 11, 14), LocalDate.of(2026, 11, 15));
+        }
+
+        @Test
+        void daysRefuseRangesWiderThanTwoYearsOrAbsurdDates() {
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(LocalDate.of(2020, 1, 1), LocalDate.of(2026, 1, 1)))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(null, LocalDate.MAX))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(LocalDate.MIN, LocalDate.of(2026, 1, 1)))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(journalRepository, never()).findCreatedAtBetween(any(), any(), any());
+        }
+
+        @Test
+        void daysDefaultToTheLastYear() {
+            User alice = TestAuth.loginAs(ALICE);
+            alice.setTimeZone("UTC");
+            JournalService service = new JournalService(journalRepository, mapper, summaryService, embeddingService,
+                    new UserClock(Clock.fixed(Instant.parse("2026-11-14T12:00:00Z"), ZoneOffset.UTC)));
+            when(journalRepository.findCreatedAtBetween(any(), any(), any())).thenReturn(List.of());
+
+            service.getDaysWithEntries(null, null);
+
+            verify(journalRepository).findCreatedAtBetween(ALICE,
+                    Instant.parse("2025-11-14T00:00:00Z"), Instant.parse("2026-11-15T00:00:00Z"));
+        }
+
+        @Test
+        void daysRejectABackwardsRange() {
+            assertThatThrownBy(() -> journalService.getDaysWithEntries(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 1, 1)))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 }
