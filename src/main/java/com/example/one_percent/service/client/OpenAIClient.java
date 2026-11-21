@@ -40,12 +40,14 @@ public class OpenAIClient {
 
     public String sendChatCompletion(ArrayNode messages, AiModel model, int maxTokens, double temperature) throws IOException {
         ObjectNode payload = mapper.createObjectNode();
-        payload.put("model", model == AiModel.SMART ? settings.smartModel() : settings.fastModel());
+        boolean smart = model == AiModel.SMART;
+        payload.put("model", smart ? settings.smartModel() : settings.fastModel());
         payload.set("messages", messages);
         payload.put("max_tokens", maxTokens);
         payload.put("temperature", temperature);
-        if (settings.reasoningEffort() != null) {
-            payload.put("reasoning_effort", settings.reasoningEffort());
+        String effort = smart ? settings.smartReasoningEffort() : settings.fastReasoningEffort();
+        if (effort != null) {
+            payload.put("reasoning_effort", effort);
         }
 
         JsonNode response = post("/chat/completions", payload, "chat completion");
@@ -67,6 +69,9 @@ public class OpenAIClient {
     public List<List<Double>> embedAll(List<String> texts) throws IOException {
         ObjectNode payload = mapper.createObjectNode();
         payload.put("model", settings.embeddingModel());
+        if (settings.embeddingDimensions() != null) {
+            payload.put("dimensions", settings.embeddingDimensions());
+        }
         ArrayNode input = payload.putArray("input");
         texts.forEach(input::add);
 

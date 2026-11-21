@@ -85,7 +85,7 @@ class EmbeddingServiceTest {
     @Test
     void noThemesForAModelWithoutAThemesFile() {
         EmbeddingService other = new EmbeddingService(journalRepository,
-                new OpenAIClient(new AiSettings("k", "http://ai.invalid/v1", "s", "f", "no-such-embedding-model", null)));
+                new OpenAIClient(new AiSettings("k", "http://ai.invalid/v1", "s", "f", "no-such-embedding-model", null, null, null)));
 
         other.loadThemeEmbeddings();
 

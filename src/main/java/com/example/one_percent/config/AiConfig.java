@@ -19,8 +19,19 @@ public class AiConfig {
             @Value("${ai.smart-model:gpt-4o}") String smartModel,
             @Value("${ai.fast-model:gpt-4o-mini}") String fastModel,
             @Value("${ai.embedding-model:text-embedding-3-small}") String embeddingModel,
-            @Value("${ai.reasoning-effort:}") String reasoningEffort) {
+            @Value("${ai.embedding-dimensions:}") String embeddingDimensions,
+            @Value("${ai.reasoning-effort:}") String reasoningEffort,
+            @Value("${ai.smart-reasoning-effort:}") String smartReasoningEffort,
+            @Value("${ai.fast-reasoning-effort:}") String fastReasoningEffort) {
         return new AiSettings(apiKey, baseUrl, smartModel, fastModel, embeddingModel,
-                reasoningEffort.isBlank() ? null : reasoningEffort);
+                embeddingDimensions.isBlank() ? null : Integer.valueOf(embeddingDimensions.trim()),
+                orDefault(smartReasoningEffort, reasoningEffort),
+                orDefault(fastReasoningEffort, reasoningEffort));
+    }
+
+    /** The role's own setting, else the shared ai.reasoning-effort, else none. */
+    private static String orDefault(String specific, String shared) {
+        if (!specific.isBlank()) return specific.trim();
+        return shared.isBlank() ? null : shared.trim();
     }
 }

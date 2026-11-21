@@ -41,7 +41,7 @@ class MaintenanceRunnerTest {
     @BeforeEach
     void setUp() {
         lenient().when(openAIClient.settings())
-                .thenReturn(new AiSettings("k", "http://ai.invalid/v1", "s", "f", "gemini-embedding-001", null));
+                .thenReturn(new AiSettings("k", "http://ai.invalid/v1", "s", "f", "gemini-embedding-001", null, null, null));
         runner = new MaintenanceRunner(openAIClient, journalRepository, context);
     }
 

@@ -35,8 +35,12 @@ class OpenAIClientTest {
 
     /** Settings like the Gemini profile's, pointed at the fake server. */
     private OpenAIClient client(String apiKey, String reasoningEffort) {
+        return client(apiKey, reasoningEffort, reasoningEffort, null);
+    }
+
+    private OpenAIClient client(String apiKey, String smartEffort, String fastEffort, Integer dimensions) {
         String base = server.url("/v1beta/openai/").toString(); // trailing slash on purpose
-        return new OpenAIClient(new AiSettings(apiKey, base, "smart-model", "fast-model", "embed-model", reasoningEffort));
+        return new OpenAIClient(new AiSettings(apiKey, base, "smart-model", "fast-model", "embed-model", dimensions, smartEffort, fastEffort));
     }
 
     private static MockResponse json(String body) {
@@ -79,6 +83,20 @@ class OpenAIClientTest {
         chat(client("k", "none"), AiModel.FAST);
 
         assertThat(body(server.takeRequest()).get("reasoning_effort").asText()).isEqualTo("none");
+    }
+
+    @Test
+    void eachModelRoleGetsItsOwnReasoningEffort() throws Exception {
+        // Gemini: the flash model accepts only "none", flash-lite rejects "none" but accepts "minimal"
+        server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"ok\"}}]}"));
+        server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"ok\"}}]}"));
+        OpenAIClient client = client("k", "none", "minimal", null);
+
+        chat(client, AiModel.SMART);
+        chat(client, AiModel.FAST);
+
+        assertThat(body(server.takeRequest()).get("reasoning_effort").asText()).isEqualTo("none");
+        assertThat(body(server.takeRequest()).get("reasoning_effort").asText()).isEqualTo("minimal");
     }
 
     @Test
@@ -126,6 +144,26 @@ class OpenAIClientTest {
         JsonNode payload = body(request);
         assertThat(payload.get("model").asText()).isEqualTo("embed-model");
         assertThat(payload.get("input").get(1).asText()).isEqualTo("second");
+    }
+
+    @Test
+    void readsGeminiEmbeddingRepliesWhichHaveNoIndexField() throws Exception {
+        // Gemini's OpenAI-compatible endpoint returns the vectors in input order without "index"
+        server.enqueue(json("{\"data\":[{\"object\":\"embedding\",\"embedding\":[0.1,0.2]},{\"object\":\"embedding\",\"embedding\":[0.3,0.4]}]}"));
+
+        assertThat(client("k", null).embedAll(List.of("first", "second"))).containsExactly(List.of(0.1, 0.2), List.of(0.3, 0.4));
+    }
+
+    @Test
+    void asksForShorterVectorsWhenDimensionsAreConfigured() throws Exception {
+        server.enqueue(json("{\"data\":[{\"embedding\":[0.1]}]}"));
+        server.enqueue(json("{\"data\":[{\"embedding\":[0.1]}]}"));
+
+        client("k", null, null, 768).embed("text");
+        client("k", null).embed("text");
+
+        assertThat(body(server.takeRequest()).get("dimensions").asInt()).isEqualTo(768);
+        assertThat(body(server.takeRequest()).has("dimensions")).isFalse();
     }
 
     @Test
