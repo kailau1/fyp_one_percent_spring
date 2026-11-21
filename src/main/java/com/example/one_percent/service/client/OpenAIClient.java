@@ -45,15 +45,17 @@ public class OpenAIClient {
     }
 
     /**
-     * A chat reply from the model for `model`'s role. If the smart model is overloaded (HTTP 503,
-     * common on free tiers) or doesn't answer in time, the request is retried once with the fast
-     * model: a slightly plainer answer beats an error.
+     * A chat reply from the model for `model`'s role. If the smart model is overloaded (HTTP 503),
+     * out of quota (HTTP 429: Gemini's free tier allows the Flash models only ~20 requests a day,
+     * Flash-Lite 500) or doesn't answer in time, the request is retried once with the fast model:
+     * a slightly plainer answer beats an error.
      */
     public String sendChatCompletion(ArrayNode messages, AiModel model, int maxTokens, double temperature) throws IOException {
         try {
             return chat(messages, model, maxTokens, temperature);
         } catch (IOException e) {
-            boolean busy = e instanceof SocketTimeoutException || (e.getMessage() != null && e.getMessage().contains("HTTP 503"));
+            String message = e.getMessage() == null ? "" : e.getMessage();
+            boolean busy = e instanceof SocketTimeoutException || message.contains("HTTP 503") || message.contains("HTTP 429");
             boolean canFallBack = model == AiModel.SMART && !settings.fastModel().equals(settings.smartModel());
             if (!busy || !canFallBack) throw e;
             logger.warn("Smart model '{}' unavailable ({}); answering with '{}' instead",

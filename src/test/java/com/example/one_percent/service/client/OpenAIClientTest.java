@@ -114,6 +114,16 @@ class OpenAIClientTest {
     }
 
     @Test
+    void aSmartModelOutOfQuotaFallsBackToTheFastOne() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(429).setBody("{\"error\":{\"message\":\"quota exceeded\"}}"));
+        server.enqueue(json("{\"choices\":[{\"message\":{\"content\":\"From the fast model.\"}}]}"));
+
+        assertThat(chat(client("k", null), AiModel.SMART)).isEqualTo("From the fast model.");
+        server.takeRequest();
+        assertThat(body(server.takeRequest()).get("model").asText()).isEqualTo("fast-model");
+    }
+
+    @Test
     void otherFailuresAndTheFastModelAreNotRetried() {
         server.enqueue(new MockResponse().setResponseCode(400).setBody("{\"error\":{\"message\":\"bad request\"}}"));
         server.enqueue(new MockResponse().setResponseCode(503).setBody("busy"));
