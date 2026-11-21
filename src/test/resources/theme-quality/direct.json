@@ -1,0 +1,63 @@
+[
+  {"labels": ["procrastination"], "text": "Monday. Plan was to finish the lab report before the gym. Instead I reorganised my spotify playlists, made a smoothie, replied to every group chat, and somehow it's 6pm. Report still at the intro. Gym didn't happen either."},
+  {"labels": ["procrastination"], "text": "the washing machine has been broken for two weeks and I still haven't rung the landlord. keep telling myself I'll do it after work"},
+  {"labels": ["procrastination"], "text": "Had a whole free Saturday for the portfolio. Opened it once, closed it, and went down a youtube rabbit hole about bridges. Feel annoyed at myself."},
+  {"labels": ["procrastination"], "text": "Emails piling up. I read them, mark them unread, and tell myself I'll reply properly later. Later never comes."},
+
+  {"labels": ["self-doubt"], "text": "Manager said my report was solid. I nodded but inside I was sure she hadn't read it properly. Everyone else on the team seems so much sharper than me."},
+  {"labels": ["self-doubt"], "text": "Thinking about applying for the senior role but who am I kidding. They'd want someone who actually knows what they're doing."},
+  {"labels": ["self-doubt"], "text": "Drafted my dating profile and deleted it. Nobody's going to be interested anyway."},
+  {"labels": ["self-doubt"], "text": "Second-guessed every answer on the quiz and changed three right answers to wrong ones. Classic me."},
+
+  {"labels": ["gratitude"], "text": "Neighbour brought round soup when she heard I was ill. Didn't expect that at all. People can be so kind."},
+  {"labels": ["gratitude"], "text": "Good day. Coffee with Sam, sunshine on the walk back, cat asleep on my lap now. Feeling lucky honestly."},
+  {"labels": ["gratitude"], "text": "Looked through old photos tonight and felt so thankful for the friends I've had along the way."},
+  {"labels": ["gratitude"], "text": "Grandad turned 90 today. So glad we still have him and that I got to be there."},
+
+  {"labels": ["discipline"], "text": "Day 21 of meal prepping on Sundays. Boring but it's working, haven't bought lunch out once."},
+  {"labels": ["discipline"], "text": "Alarm at 5:45, didn't snooze, did the run in the rain. Not fun but it's done and I kept my promise to myself."},
+  {"labels": ["discipline"], "text": "Put the phone in the drawer for my two study blocks again. Hard for the first ten minutes then fine."},
+  {"labels": ["discipline"], "text": "I've practised guitar for 20 minutes every single day this month, even the days I really didn't want to."},
+
+  {"labels": ["anxiety"], "text": "Doctor wants to run more tests. Trying not to google symptoms but I've already convinced myself it's something serious. Chest tight all evening."},
+  {"labels": ["anxiety"], "text": "Party tonight and I've been dreading it all week. What if I've got nothing to say, what if people think I'm weird."},
+  {"labels": ["anxiety"], "text": "Woke at 4am with my heart pounding about the job interview. Couldn't get back to sleep."},
+  {"labels": ["anxiety"], "text": "Kept refreshing my bank app. Rent goes out Friday and I'm scared it won't cover it."},
+
+  {"labels": ["burnout"], "text": "Third twelve hour shift in a row. Came home, sat in the dark, didn't eat. I can't keep doing this but I don't know how to stop."},
+  {"labels": ["burnout"], "text": "Used to love teaching. Now I count down the minutes. Marking feels endless and I've got nothing left for the kids."},
+  {"labels": ["burnout"], "text": "Holiday was meant to recharge me but I feel just as wiped out as before I left."},
+  {"labels": ["burnout"], "text": "Everyone keeps asking for more and I keep saying yes. I'm running on fumes and I feel like a ghost at home."},
+
+  {"labels": ["confidence"], "text": "Pitched my idea to the director and she loved it. Didn't hedge or apologise once. Proud of how I carried myself."},
+  {"labels": ["confidence"], "text": "Went to the climbing wall alone for the first time. A few months ago I'd never have walked in by myself."},
+  {"labels": ["confidence"], "text": "Told my friend no when she asked to borrow money again. Felt strong, not guilty."},
+  {"labels": ["confidence"], "text": "Finished the interview feeling like I'd shown who I really am. Whatever happens I did myself justice."},
+
+  {"labels": ["emotional regulation"], "text": "Argument with dad about the car. Felt the heat coming up and I actually said I need five minutes and left the room. Came back and we sorted it."},
+  {"labels": ["emotional regulation"], "text": "Snapped at the cashier over nothing. Mortified. I need to notice the build up before it explodes."},
+  {"labels": ["emotional regulation"], "text": "Something small tipped me into tears at work. Went to the toilets, did box breathing, came back steady."},
+  {"labels": ["emotional regulation"], "text": "Journalling right after the fight helped me see I was more hurt than angry."},
+
+  {"labels": ["perfectionism"], "text": "Handed in the dissertation draft two days late because chapter 2 just didn't feel right. Supervisor said it was fine weeks ago."},
+  {"labels": ["perfectionism"], "text": "Redid my makeup three times before leaving and was late. Nobody would have noticed the first version."},
+  {"labels": ["perfectionism"], "text": "Cleaned the kitchen until 1am because people are coming tomorrow and it has to be spotless."},
+  {"labels": ["perfectionism"], "text": "Got positive feedback on my code review except one small comment and that comment is all I can think about."},
+
+  {"labels": ["motivation"], "text": "Signed up for the course and I'm genuinely excited. First time in ages I've felt pulled towards something."},
+  {"labels": ["motivation"], "text": "Can't find the energy to work on the business idea anymore. It felt so important in spring."},
+  {"labels": ["motivation"], "text": "Saw a video of someone my age who started late and made it. Felt a spark, wrote out a plan straight away."},
+  {"labels": ["motivation"], "text": "Running feels pointless at the moment. No goal, no race. Need something to aim for."},
+
+  {"labels": ["procrastination", "anxiety"], "text": "The visa form is due Friday and I'm too scared of getting it wrong to even open it. Every time I think about it my stomach drops so I do something else."},
+  {"labels": ["perfectionism", "self-doubt"], "text": "Rewrote my cover letter all evening because it never sounds good enough, and honestly I don't think I'm good enough for the job anyway."},
+  {"labels": ["burnout", "motivation"], "text": "Totally drained from work and I've lost any drive to do the side projects I used to love."},
+  {"labels": ["discipline", "confidence"], "text": "Six months of showing up at the gym every morning and today I lifted more than I ever thought I could. I'm starting to believe in myself."},
+  {"labels": ["gratitude", "emotional regulation"], "text": "Wanted to scream after the call but paused, breathed, and thought about everything that's going right. Felt thankful for my partner and calmed down."},
+  {"labels": ["anxiety", "burnout"], "text": "Constant worry about the restructure on top of months of overtime. I'm exhausted and jumpy at the same time."},
+
+  {"labels": [], "text": "Went to Tesco, got pasta and some veg. Made spag bol. Watched the football."},
+  {"labels": [], "text": "Train was delayed twenty minutes. Read my book. Weather was grey."},
+  {"labels": [], "text": "Painted the spare room light blue. Took longer than expected but looks decent."},
+  {"labels": [], "text": "Booked flights for the wedding in June. Need to sort a hotel next week."}
+]

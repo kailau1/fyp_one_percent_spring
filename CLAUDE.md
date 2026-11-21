@@ -28,6 +28,9 @@ The old copy on `/mnt/c/Users/Kai Lau/Documents/work/one_percent_spring` is only
   `AI_BASE_URL=http://localhost:8090/v1 scripts/dev-run.sh` uses the free e2e stand-in (`one_percent_web/e2e/openai-stub.mjs`).
   Model names live only in `AiSettings`/`application-*.properties`; code asks for `AiModel.SMART` or `AiModel.FAST`.
   After changing the embedding model: `--maintenance.task=generate-themes`, then `--maintenance.task=reembed`.
+- Themes are defined by example entries in `src/main/resources/themes/definitions.json`. After editing it:
+  `--maintenance.task=generate-themes` (commit the vectors file), `--maintenance.task=retag`, then the opt-in quality
+  check `RUN_INTEGRATION_TESTS=true mvn -Dtest=ThemeQualityIT test` (keep ≥ 90%). Never reuse its test entries as examples.
 
 ## Conventions
 
