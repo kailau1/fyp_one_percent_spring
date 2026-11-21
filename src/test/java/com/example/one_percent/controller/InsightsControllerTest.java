@@ -56,7 +56,8 @@ class InsightsControllerTest {
     void returnsThemesWithCountsAndExamples() throws Exception {
         when(insightsService.getThemeInsights()).thenReturn(new ThemeInsightsDTO(5, 4, List.of(
                 new ThemeInsightsDTO.Theme("burnout", 3, List.of(
-                        new ThemeInsightsDTO.EntryRef("j1", "Long week", Instant.parse("2026-11-14T09:00:00Z")))))));
+                        new ThemeInsightsDTO.EntryRef("j1", "Long week", Instant.parse("2026-11-14T09:00:00Z"))), List.of(1, 2))),
+                List.of("2026-10", "2026-11"), List.of(2, 3)));
 
         mvc.perform(get("/api/insights/themes").header("Authorization", "Bearer valid-token"))
                 .andExpect(status().isOk())
@@ -65,6 +66,9 @@ class InsightsControllerTest {
                 .andExpect(jsonPath("$.themes[0].name").value("burnout"))
                 .andExpect(jsonPath("$.themes[0].entryCount").value(3))
                 .andExpect(jsonPath("$.themes[0].recentEntries[0].id").value("j1"))
-                .andExpect(jsonPath("$.themes[0].recentEntries[0].createdAt").value("2026-11-14T09:00:00Z"));
+                .andExpect(jsonPath("$.themes[0].recentEntries[0].createdAt").value("2026-11-14T09:00:00Z"))
+                .andExpect(jsonPath("$.months[1]").value("2026-11"))
+                .andExpect(jsonPath("$.entriesPerMonth[1]").value(3))
+                .andExpect(jsonPath("$.themes[0].monthlyCounts[0]").value(1));
     }
 }

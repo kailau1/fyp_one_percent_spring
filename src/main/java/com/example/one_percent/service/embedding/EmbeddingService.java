@@ -197,7 +197,7 @@ public class EmbeddingService {
     }
 
     /** Whether the entry's themes are known: it could be compared with the themes, or the user tagged it. */
-    private boolean isAnalysed(JournalEntry entry) {
+    public boolean isAnalysed(JournalEntry entry) {
         boolean comparable = entry.getContentEmbedding() != null
                 ? entry.getContentEmbedding().size() == themeDimensions() && themeDimensions() > 0
                 : Objects.equals(entry.getThemesVersion(), themesVersion) && themesVersion != null;
