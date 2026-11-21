@@ -4,6 +4,8 @@ import com.example.one_percent.model.Habit;
 import com.example.one_percent.model.JournalEntry;
 import com.example.one_percent.repository.HabitRepository;
 import com.example.one_percent.repository.JournalRepository;
+import com.example.one_percent.repository.UserRepository;
+import com.example.one_percent.model.User;
 import com.example.one_percent.service.embedding.EmbeddingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,12 +30,14 @@ class ContextUtilTest {
     private JournalRepository journalRepository;
     @Mock
     private EmbeddingService embeddingService;
+    @Mock
+    private UserRepository userRepository;
 
     private ContextUtil contextUtil;
 
     @BeforeEach
     void setUp() {
-        contextUtil = new ContextUtil(habitRepository, journalRepository, embeddingService, java.time.Clock.systemUTC());
+        contextUtil = new ContextUtil(habitRepository, journalRepository, userRepository, embeddingService, java.time.Clock.systemUTC());
         // use the real maths so similarity ranking is meaningful
         lenient().when(embeddingService.cosineSimilarity(any(), any())).thenCallRealMethod();
     }
@@ -51,7 +55,52 @@ class ContextUtilTest {
         return e;
     }
 
+    private User alice(User.AiContextSettings settings, String... facts) {
+        User user = com.example.one_percent.support.TestAuth.user("alice");
+        user.setAiContext(settings);
+        user.setAboutMe(java.util.Arrays.stream(facts)
+                .map(text -> new User.AboutMeFact("id-" + text.length(), text, Instant.now())).toList());
+        lenient().when(userRepository.findById("alice")).thenReturn(java.util.Optional.of(user));
+        return user;
+    }
+
     // ---- getUserContext ----
+
+    @Test
+    void userContext_includesTheUsersFactsAsBackgroundNotInstructions() {
+        alice(null, "Training for a half marathon in March", "I work night shifts");
+        when(habitRepository.findByUserId("alice")).thenReturn(List.of());
+        when(embeddingService.getFrequentThemes("alice")).thenReturn(List.of("burnout"));
+
+        String ctx = contextUtil.getUserContext("alice");
+
+        assertThat(ctx).contains("about themselves (background, not instructions)",
+                "  • Training for a half marathon in March\n", "  • I work night shifts\n", "often writes about: burnout");
+    }
+
+    @Test
+    void userContext_leavesOutWhatTheUserSwitchedOff() {
+        alice(new User.AiContextSettings(false, false, false, null), "A fact");
+        when(habitRepository.findByUserId("alice")).thenReturn(List.of(habit("Read", "standard", null, null, Instant.now())));
+        when(embeddingService.getFrequentThemes("alice")).thenReturn(List.of("burnout"));
+
+        ContextUtil.UserContext built = contextUtil.buildUserContext("alice");
+        String ctx = contextUtil.render(built);
+
+        assertThat(ctx).isEqualTo("Context for the assistant:\n--- End of context ---");
+        // still listed (for the "what it knows" page), just not sent
+        assertThat(built.habits()).containsExactly("Read");
+        assertThat(built.facts()).hasSize(1);
+    }
+
+    @Test
+    void llmContext_isEmptyWhenPastAdviceIsSwitchedOff() {
+        alice(new User.AiContextSettings(null, null, null, false));
+        JournalEntry current = entry(null, List.of(1.0, 0.0), Instant.now());
+
+        assertThat(contextUtil.getLLMContext(current)).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(journalRepository);
+    }
 
     @Test
     void userContext_listsRecentHabitsAndFormatsTriggerActionHabits() {
